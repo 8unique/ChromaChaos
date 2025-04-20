@@ -31,8 +31,21 @@ Dive into the vibrant and engaging world of **Chroma Chaos**, an addictive block
 
 ## Technologies Used
 
+* **Android Studio**
+* **Kotlin**
+* **Jetpack Compose**
 
 ## Development Status
 
+**Currently in Development.** Features and UI are actively being built and refined. Expect updates as the game progresses.
 
 ## Download
+
+**Coming Soon to the Google Play Store!** Stay tuned for updates on the release.
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contact
+
+8unique - [game.chromachaos@gmail.com](mailto:game.chromachaos@gmail.com)
