@@ -1,6 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Chroma Chaos</string>
-    <string name="button_left">Left</string>
-    <string name="button_right">Right</string>
-    <string name="button_down">Down</string>
-</resources>
+</resources> 
