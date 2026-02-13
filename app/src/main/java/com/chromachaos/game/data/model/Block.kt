@@ -20,29 +20,15 @@ data class Block(
             else -> shape.blocks
         }
     }
-    
+
     private fun rotateMatrix90(matrix: List<List<Boolean>>): List<List<Boolean>> {
-        val rows = matrix.size
-        val cols = matrix[0].size
-        return List(cols) { col ->
-            List(rows) { row ->
-                matrix[rows - 1 - row][col]
-            }
-        }
+        val rows = matrix.size; val cols = matrix[0].size
+        return List(cols) { col -> List(rows) { row -> matrix[rows - 1 - row][col] } }
     }
-    
-    private fun rotateMatrix180(matrix: List<List<Boolean>>): List<List<Boolean>> {
-        return matrix.reversed().map { it.reversed() }
-    }
-    
+    private fun rotateMatrix180(matrix: List<List<Boolean>>) = matrix.reversed().map { it.reversed() }
     private fun rotateMatrix270(matrix: List<List<Boolean>>): List<List<Boolean>> {
-        val rows = matrix.size
-        val cols = matrix[0].size
-        return List(cols) { col ->
-            List(rows) { row ->
-                matrix[row][cols - 1 - col]
-            }
-        }
+        val rows = matrix.size; val cols = matrix[0].size
+        return List(cols) { col -> List(rows) { row -> matrix[row][cols - 1 - col] } }
     }
 }
 
@@ -52,6 +38,30 @@ data class Position(
 )
 
 enum class BlockShape(val blocks: List<List<Boolean>>) {
+    // ── 1-block (monomino) ──
+    DOT(listOf(
+        listOf(true)
+    )),
+
+    // ── 2-block (domino) ──
+    PAIR_H(listOf(
+        listOf(true, true)
+    )),
+    PAIR_V(listOf(
+        listOf(true),
+        listOf(true)
+    )),
+
+    // ── 3-block (trominoes) ──
+    TRI_I(listOf(
+        listOf(true, true, true)
+    )),
+    TRI_L(listOf(
+        listOf(true, false),
+        listOf(true, true)
+    )),
+
+    // ── 4-block (tetrominoes) ──
     I(listOf(
         listOf(true, true, true, true)
     )),

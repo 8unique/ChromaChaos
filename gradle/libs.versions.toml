@@ -15,7 +15,7 @@ lifecycleViewmodelCompose = "2.9.2"
 navigationCompose = "2.9.3"
 roomKtx = "2.7.2"
 ksp-version = "1.9.10-1.0.13"
-hilt-version = "2.48"
+hilt-version = "2.51"
 
 [libraries]
 androidx-activity-compose-v182 = { module = "androidx.activity:activity-compose", version.ref = "activityComposeVersion" }

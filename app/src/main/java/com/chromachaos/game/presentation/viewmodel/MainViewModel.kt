@@ -24,6 +24,11 @@ class MainViewModel @Inject constructor(
     val gameStats: StateFlow<GameStats> = _gameStats.asStateFlow()
     
     private var gameStartTime: Long = 0L
+
+    companion object {
+        /** Minimum consecutive same-color blocks in a straight line to clear. */
+        private const val MIN_LINE_LENGTH = 4
+    }
     
     init {
         loadGameData()
@@ -48,10 +53,11 @@ class MainViewModel @Inject constructor(
         val gridWidth = settings.gridWidth
         val gridHeight = settings.gridHeight
         
-        // Create grid with proper dimensions
         val grid = List(gridHeight) { List(gridWidth) { GridCell.Empty } }
         
-        val newBlock = gameUseCase.generateRandomBlock().copy(position = Position(gridWidth / 2 - 1, 0))
+        val newBlock = gameUseCase.generateRandomBlock().copy(
+            position = Position(gridWidth / 2 - 1, 0)
+        )
         val nextBlock = gameUseCase.generateRandomBlock()
         
         _gameState.value = GameState(
@@ -70,6 +76,7 @@ class MainViewModel @Inject constructor(
     
     fun moveBlock(direction: MoveDirection) {
         val currentState = _gameState.value
+        if (currentState.isPaused || currentState.isGameOver) return
         val currentBlock = currentState.currentBlock ?: return
         
         val newPosition = when (direction) {
@@ -83,81 +90,101 @@ class MainViewModel @Inject constructor(
                 currentBlock = currentBlock.copy(position = newPosition)
             )
         } else if (direction == MoveDirection.DOWN) {
-            // Block can't move down further, place it and start next block
             placeBlock(currentBlock)
         }
     }
     
     fun rotateBlock() {
         val currentState = _gameState.value
+        if (currentState.isPaused || currentState.isGameOver) return
         val currentBlock = currentState.currentBlock ?: return
         
         val newRotation = (currentBlock.rotation + 90) % 360
         val rotatedBlock = currentBlock.copy(rotation = newRotation)
         
         if (isValidPosition(rotatedBlock)) {
-            _gameState.value = currentState.copy(
-                currentBlock = rotatedBlock
-            )
+            _gameState.value = currentState.copy(currentBlock = rotatedBlock)
         }
     }
     
     fun dropBlock() {
         val currentState = _gameState.value
+        if (currentState.isPaused || currentState.isGameOver) return
         val currentBlock = currentState.currentBlock ?: return
         
-        // Find the lowest valid position
         var dropPosition = currentBlock.position
         while (isValidPosition(currentBlock.copy(position = dropPosition.copy(y = dropPosition.y + 1)))) {
             dropPosition = dropPosition.copy(y = dropPosition.y + 1)
         }
         
-        // Place the block at the lowest position
         placeBlock(currentBlock.copy(position = dropPosition))
     }
     
+    // ── Core game flow after a piece locks ──────────────────────────────
     private fun placeBlock(block: Block) {
         val currentState = _gameState.value
-        val newGrid = placeBlockOnGrid(currentState.grid, block)
-        
-        // Check for line clears
-        val (clearedGrid, linesCleared) = clearLines(newGrid)
-        
-        // Calculate new score and level
-        val newScore = currentState.score + gameUseCase.calculateScore(linesCleared, currentState.combo)
-        val newLinesCleared = currentState.linesCleared + linesCleared
-        val newLevel = gameUseCase.calculateLevel(newLinesCleared)
-        val newCombo = if (linesCleared > 0) currentState.combo + 1 else 0
-        
-        // Generate next block
+        var boardGrid = placeBlockOnGrid(currentState.grid, block)
+        var totalScore = 0
+        var totalBlocksCleared = 0
+        var chainStep = 0
+
+        // ── Chain reaction loop: scan → clear → gravity → repeat ────────
+        while (true) {
+            val cellsToClear = findColorLines(boardGrid, MIN_LINE_LENGTH)
+            if (cellsToClear.isEmpty()) break
+
+            chainStep++
+            totalBlocksCleared += cellsToClear.size
+
+            // Score: 10 pts per block × combo multiplier
+            val multiplier = gameUseCase.getComboMultiplier(chainStep)
+            val stepScore = gameUseCase.calculateColorLineScore(cellsToClear.size)
+            totalScore += (stepScore * multiplier).toInt()
+
+            boardGrid = clearCells(boardGrid, cellsToClear)
+            boardGrid = applyGravity(boardGrid)
+        }
+
+        val anyClearHappened = chainStep > 0
+
+        // ── Combo tracking (across piece placements) ────────────────────
+        val newCombo = if (anyClearHappened) currentState.combo + 1 else 0
+
+        // ── Level / speed ───────────────────────────────────────────────
+        val newTotalLines = currentState.linesCleared + totalBlocksCleared
+        val newLevel = gameUseCase.calculateLevel(newTotalLines)
+        val newScore = currentState.score + totalScore
+
+        // ── Spawn next piece ────────────────────────────────────────────
         val nextBlock = currentState.nextBlock
         val newNextBlock = gameUseCase.generateRandomBlock()
-        
-        // Check for game over
         val settings = _gameSettings.value
         val startX = settings.gridWidth / 2 - 1
-        val isGameOver = !nextBlock?.let { isValidPosition(it.copy(position = Position(startX, 0))) }!!
-        
+
+        val spawnedBlock = nextBlock?.copy(position = Position(startX, 0))
+        val isGameOver = spawnedBlock == null || !isValidPosition(spawnedBlock)
+
         _gameState.value = currentState.copy(
-            grid = clearedGrid,
-            currentBlock = nextBlock,
+            grid = boardGrid,
+            currentBlock = if (isGameOver) null else spawnedBlock,
             nextBlock = newNextBlock,
             score = newScore,
             level = newLevel,
-            linesCleared = newLinesCleared,
+            linesCleared = newTotalLines,
             combo = newCombo,
+            chainCount = chainStep,
             isGameOver = isGameOver,
             gameSpeed = gameUseCase.calculateGameSpeed(newLevel)
         )
-        
-        // Update stats
-        if (linesCleared > 0) {
+
+        // ── Persist stats ───────────────────────────────────────────────
+        if (anyClearHappened) {
             viewModelScope.launch {
-                gameUseCase.addLinesCleared(linesCleared)
+                gameUseCase.addLinesCleared(totalBlocksCleared)
                 gameUseCase.updateBestCombo(newCombo)
             }
         }
-        
+
         if (isGameOver) {
             val playTime = System.currentTimeMillis() - gameStartTime
             viewModelScope.launch {
@@ -167,8 +194,11 @@ class MainViewModel @Inject constructor(
         }
     }
     
+    // ── Board helpers ───────────────────────────────────────────────────
+    
     private fun isValidPosition(block: Block): Boolean {
         val grid = _gameState.value.grid
+        if (grid.isEmpty()) return false
         val shape = block.getRotatedShape()
         
         for (y in shape.indices) {
@@ -198,7 +228,7 @@ class MainViewModel @Inject constructor(
                     val gridX = block.position.x + x
                     val gridY = block.position.y + y
                     
-                    if (gridY >= 0 && gridY < newGrid.size && gridX >= 0 && gridX < newGrid[0].size) {
+                    if (gridY in 0 until newGrid.size && gridX in 0 until newGrid[0].size) {
                         newGrid[gridY][gridX] = GridCell(
                             color = block.color,
                             isSpecial = block.isSpecial,
@@ -209,23 +239,102 @@ class MainViewModel @Inject constructor(
             }
         }
         
-        return newGrid
+        return newGrid.map { it.toList() }
     }
-    
-    private fun clearLines(grid: List<List<GridCell>>): Pair<List<List<GridCell>>, Int> {
-        val newGrid = grid.toMutableList()
-        var linesCleared = 0
-        
-        // Check horizontal lines
-        for (y in grid.indices) {
-            if (grid[y].all { it.color != null }) {
-                newGrid.removeAt(y)
-                newGrid.add(0, List(grid[0].size) { GridCell.Empty })
-                linesCleared++
+
+    // ── Straight-line color clear system ─────────────────────────────────
+
+    private data class Cell(val x: Int, val y: Int)
+
+    /**
+     * Scan the board for 4+ consecutive same-color blocks in
+     * straight horizontal or vertical lines. Returns a de-duplicated
+     * set of cells to clear (a cell at an intersection is only listed once).
+     */
+    private fun findColorLines(board: List<List<GridCell>>, minLength: Int): Set<Cell> {
+        val height = board.size
+        if (height == 0) return emptySet()
+        val width = board[0].size
+        val toClear = mutableSetOf<Cell>()
+
+        // ── Horizontal scan ─────────────────────────────────────────────
+        for (y in 0 until height) {
+            var runStart = 0
+            while (runStart < width) {
+                val color = board[y][runStart].color
+                if (color == null) { runStart++; continue }
+
+                var runEnd = runStart + 1
+                while (runEnd < width && board[y][runEnd].color == color) {
+                    runEnd++
+                }
+                val runLen = runEnd - runStart
+                if (runLen >= minLength) {
+                    for (x in runStart until runEnd) {
+                        toClear.add(Cell(x, y))
+                    }
+                }
+                runStart = runEnd
             }
         }
-        
-        return Pair(newGrid, linesCleared)
+
+        // ── Vertical scan ───────────────────────────────────────────────
+        for (x in 0 until width) {
+            var runStart = 0
+            while (runStart < height) {
+                val color = board[runStart][x].color
+                if (color == null) { runStart++; continue }
+
+                var runEnd = runStart + 1
+                while (runEnd < height && board[runEnd][x].color == color) {
+                    runEnd++
+                }
+                val runLen = runEnd - runStart
+                if (runLen >= minLength) {
+                    for (y in runStart until runEnd) {
+                        toClear.add(Cell(x, y))
+                    }
+                }
+                runStart = runEnd
+            }
+        }
+
+        return toClear
+    }
+
+    /**
+     * Set the given cells to empty.
+     */
+    private fun clearCells(board: List<List<GridCell>>, cells: Set<Cell>): List<List<GridCell>> {
+        if (cells.isEmpty()) return board
+        val newGrid = board.map { it.toMutableList() }
+        for (cell in cells) {
+            newGrid[cell.y][cell.x] = GridCell.Empty
+        }
+        return newGrid.map { it.toList() }
+    }
+
+    /**
+     * Gravity: for each column, compact filled cells downward.
+     */
+    private fun applyGravity(board: List<List<GridCell>>): List<List<GridCell>> {
+        val height = board.size
+        if (height == 0) return board
+        val width = board[0].size
+        val newGrid = MutableList(height) { MutableList(width) { GridCell.Empty } }
+
+        for (x in 0 until width) {
+            var writeRow = height - 1
+            for (y in height - 1 downTo 0) {
+                val cell = board[y][x]
+                if (cell.color != null) {
+                    newGrid[writeRow][x] = cell
+                    writeRow--
+                }
+            }
+        }
+
+        return newGrid.map { it.toList() }
     }
     
     fun pauseGame() {
@@ -240,8 +349,6 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             gameUseCase.updateGameSettings(settings)
         }
-        
-        // Update the settings state
         _gameSettings.value = settings
     }
     

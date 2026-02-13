@@ -39,21 +39,32 @@ class GameUseCase @Inject constructor(
     fun generateRandomBlock(): Block = repository.generateRandomBlock()
     
     fun generateSpecialBlock(): Block = repository.generateSpecialBlock()
-    
-    fun calculateScore(linesCleared: Int, combo: Int): Int {
-        return when (linesCleared) {
-            1 -> 100 * (combo + 1)
-            2 -> 300 * (combo + 1)
-            3 -> 500 * (combo + 1)
-            4 -> 800 * (combo + 1)
-            else -> 0
+
+    /**
+     * Color-line scoring: 10 points per cleared block.
+     */
+    fun calculateColorLineScore(blocksCleared: Int): Int {
+        return blocksCleared * 10
+    }
+
+    /**
+     * Combo multiplier for chain reactions.
+     * Combo 1 = x1.0, 2 = x1.5, 3 = x2.0, 4 = x2.5, 5+ = x3.0
+     */
+    fun getComboMultiplier(comboStep: Int): Double {
+        return when {
+            comboStep <= 1 -> 1.0
+            comboStep == 2 -> 1.5
+            comboStep == 3 -> 2.0
+            comboStep == 4 -> 2.5
+            else -> 3.0
         }
     }
-    
+
     fun calculateLevel(linesCleared: Int): Int {
         return (linesCleared / 10) + 1
     }
-    
+
     fun calculateGameSpeed(level: Int): Long {
         return maxOf(100L, 1000L - (level * 50L))
     }

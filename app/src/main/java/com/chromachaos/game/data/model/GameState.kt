@@ -12,7 +12,8 @@ data class GameState(
     val isGameOver: Boolean = false,
     val isPaused: Boolean = false,
     val gameSpeed: Long = 1000L,
-    val combo: Int = 0
+    val combo: Int = 0,
+    val chainCount: Int = 0
 )
 
 data class GridCell(

@@ -44,7 +44,7 @@ fun GameScreen(
         viewModel.startNewGame()
     }
     
-    LaunchedEffect(gameState.isPaused, gameState.gameSpeed) {
+    LaunchedEffect(gameState.isPaused, gameState.gameSpeed, gameState.isGameOver) {
         if (!gameState.isPaused && !gameState.isGameOver) {
             while (true) {
                 delay(gameState.gameSpeed)
@@ -93,6 +93,7 @@ fun GameScreen(
                 GameSidePanel(
                     nextBlock = gameState.nextBlock,
                     combo = gameState.combo,
+                    chainCount = gameState.chainCount,
                     onRotate = { viewModel.rotateBlock() },
                     onDrop = { viewModel.dropBlock() }
                 )
@@ -187,10 +188,12 @@ fun GameGrid(
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp)
         ) {
             grid.forEachIndexed { y, row ->
-                Row {
+                Row(modifier = Modifier.weight(1f)) {
                     row.forEachIndexed { x, cell ->
                         GridCell(
                             cell = cell,
@@ -198,11 +201,11 @@ fun GameGrid(
                                 val shape = block.getRotatedShape()
                                 val blockX = block.position.x
                                 val blockY = block.position.y
-                                
+
                                 for (sy in shape.indices) {
                                     for (sx in shape[sy].indices) {
-                                        if (shape[sy][sx] && 
-                                            x == blockX + sx && 
+                                        if (shape[sy][sx] &&
+                                            x == blockX + sx &&
                                             y == blockY + sy) {
                                             return@let true
                                         }
@@ -213,7 +216,7 @@ fun GameGrid(
                             blockColor = currentBlock?.color,
                             modifier = Modifier
                                 .weight(1f)
-                                .aspectRatio(1f)
+                                .fillMaxHeight()
                                 .padding(0.5.dp)
                         )
                     }
@@ -257,6 +260,7 @@ fun GridCell(
 fun GameSidePanel(
     nextBlock: Block?,
     combo: Int,
+    chainCount: Int,
     onRotate: () -> Unit,
     onDrop: () -> Unit
 ) {
@@ -313,6 +317,35 @@ fun GameSidePanel(
                 )
             }
         }
+
+        // Chain indicator
+        if (chainCount > 0) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF00E676).copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Chain",
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                    Text(
+                        text = "x$chainCount",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00E676)
+                    )
+                }
+            }
+        }
         
         // Action Buttons
         Column(
@@ -356,7 +389,7 @@ fun GameSidePanel(
 fun NextBlockPreview(block: Block) {
     val shape = block.getRotatedShape()
     val color = block.color
-    
+
     Column {
         shape.forEach { row ->
             Row {

@@ -1,15 +1,52 @@
+# Built artifacts
 *.iml
-.gradle
+.gradle/
+/build/
+/app/build/
+/captures/
+
+# Local config
 /local.properties
-/.idea/caches
-/.idea/libraries
+local.properties
+
+# IDE - Android Studio / IntelliJ
+/.idea/caches/
+/.idea/libraries/
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/other.xml
+/.idea/render.experimental.xml
+/.idea/kotlinc.xml
+/.idea/appInsightsSettings.xml
+/.idea/shelf/
+
+# Native build
+.externalNativeBuild/
+.cxx/
+
+# OS files
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties 
+Thumbs.db
+Desktop.ini
+
+# Signing
+*.jks
+*.keystore
+!debug.keystore
+
+# Logs
+*.log
+
+# APKs / Bundles (use CI to build release)
+*.apk
+*.aab
+*.ap_
+
+# Crashlytics
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties 
