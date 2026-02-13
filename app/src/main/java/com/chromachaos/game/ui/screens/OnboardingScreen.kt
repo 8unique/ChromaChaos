@@ -18,8 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.chromachaos.game.R
 import com.chromachaos.game.data.model.Difficulty
 import com.chromachaos.game.presentation.viewmodel.OnboardingViewModel
 
@@ -60,7 +62,7 @@ fun OnboardingScreen(
                     IconButton(onClick = { viewModel.previousStep() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.onboarding_back),
                             tint = Color.White
                         )
                     }
@@ -69,7 +71,7 @@ fun OnboardingScreen(
                 }
                 
                 Text(
-                    text = "Welcome to Chroma Chaos",
+                    text = stringResource(R.string.onboarding_header),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -109,7 +111,7 @@ fun OnboardingScreen(
                         onClick = { viewModel.previousStep() }
                     ) {
                         Text(
-                            text = "Back",
+                            text = stringResource(R.string.onboarding_back),
                             color = Color.White
                         )
                     }
@@ -134,7 +136,7 @@ fun OnboardingScreen(
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
-                        text = if (currentStep < 3) "Next" else "Start Playing",
+                        text = if (currentStep < 3) stringResource(R.string.onboarding_next) else stringResource(R.string.onboarding_start_playing),
                         color = Color.White
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -155,7 +157,7 @@ fun WelcomeStep() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Welcome to Chroma Chaos!",
+            text = stringResource(R.string.onboarding_welcome_title),
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
@@ -165,7 +167,7 @@ fun WelcomeStep() {
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "Match colorful blocks to clear lines and achieve the highest score!",
+            text = stringResource(R.string.onboarding_welcome_description),
             fontSize = 16.sp,
             color = Color.White.copy(alpha = 0.8f),
             textAlign = TextAlign.Center
@@ -184,7 +186,7 @@ fun WelcomeStep() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "How to Play",
+                    text = stringResource(R.string.onboarding_how_to_play),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -193,10 +195,7 @@ fun WelcomeStep() {
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
-                    text = "• Drag blocks left/right to move\n" +
-                           "• Tap to rotate blocks\n" +
-                           "• Swipe down to drop quickly\n" +
-                           "• Clear lines to score points",
+                    text = stringResource(R.string.onboarding_instructions),
                     fontSize = 14.sp,
                     color = Color.White.copy(alpha = 0.8f),
                     textAlign = TextAlign.Start
@@ -215,7 +214,7 @@ fun DifficultyStep(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Choose Difficulty",
+            text = stringResource(R.string.onboarding_choose_difficulty),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
@@ -261,10 +260,10 @@ fun DifficultyCard(
                 )
                 Text(
                     text = when (difficulty) {
-                        Difficulty.EASY -> "Slower speed, more time to think"
-                        Difficulty.NORMAL -> "Balanced gameplay"
-                        Difficulty.HARD -> "Faster speed, challenging"
-                        Difficulty.EXPERT -> "Maximum challenge"
+                        Difficulty.EASY -> stringResource(R.string.onboarding_difficulty_easy_desc)
+                        Difficulty.NORMAL -> stringResource(R.string.onboarding_difficulty_normal_desc)
+                        Difficulty.HARD -> stringResource(R.string.onboarding_difficulty_hard_desc)
+                        Difficulty.EXPERT -> stringResource(R.string.onboarding_difficulty_expert_desc)
                     },
                     fontSize = 14.sp,
                     color = if (isSelected) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)
@@ -285,7 +284,7 @@ fun SettingsStep(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Game Settings",
+            text = stringResource(R.string.onboarding_game_settings),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
@@ -294,22 +293,22 @@ fun SettingsStep(
         Spacer(modifier = Modifier.height(32.dp))
         
         SettingItem(
-            title = "Sound Effects",
-            description = "Enable game sounds",
+            title = stringResource(R.string.onboarding_sound_effects),
+            description = stringResource(R.string.onboarding_enable_game_sounds),
             checked = settings.enableSound,
             onCheckedChange = onSoundChanged
         )
         
         SettingItem(
-            title = "Vibration",
-            description = "Enable haptic feedback",
+            title = stringResource(R.string.onboarding_vibration),
+            description = stringResource(R.string.onboarding_enable_haptic_feedback),
             checked = settings.enableVibration,
             onCheckedChange = onVibrationChanged
         )
         
         SettingItem(
-            title = "Special Blocks",
-            description = "Enable special jewel blocks",
+            title = stringResource(R.string.onboarding_special_blocks),
+            description = stringResource(R.string.onboarding_enable_special_blocks),
             checked = settings.enableSpecialBlocks,
             onCheckedChange = onSpecialBlocksChanged
         )
@@ -366,7 +365,7 @@ fun FinalStep() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "You're Ready!",
+            text = stringResource(R.string.onboarding_ready_title),
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
@@ -375,7 +374,7 @@ fun FinalStep() {
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "Your settings have been saved. You can change them anytime in the settings menu.",
+            text = stringResource(R.string.onboarding_ready_description),
             fontSize = 16.sp,
             color = Color.White.copy(alpha = 0.8f),
             textAlign = TextAlign.Center
@@ -394,13 +393,13 @@ fun FinalStep() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Let's Play!",
+                    text = stringResource(R.string.onboarding_lets_play),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
                 Text(
-                    text = "Tap 'Start Playing' to begin your Chroma Chaos adventure!",
+                    text = stringResource(R.string.onboarding_lets_play_description),
                     fontSize = 14.sp,
                     color = Color.Black.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center

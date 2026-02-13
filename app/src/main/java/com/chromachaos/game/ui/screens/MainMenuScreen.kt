@@ -18,8 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.chromachaos.game.R
 import com.chromachaos.game.presentation.viewmodel.MainViewModel
 
 @Composable
@@ -51,14 +53,14 @@ fun MainMenuScreen(
         ) {
             // Title
             Text(
-                text = "CHROMA",
+                text = stringResource(R.string.main_menu_title_chroma),
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "CHAOS",
+                text = stringResource(R.string.main_menu_title_chaos),
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFFFFD700),
@@ -82,7 +84,7 @@ fun MainMenuScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "High Score",
+                        text = stringResource(R.string.main_menu_high_score),
                         fontSize = 16.sp,
                         color = Color.White.copy(alpha = 0.8f)
                     )
@@ -99,7 +101,7 @@ fun MainMenuScreen(
             
             // Menu Buttons
             MenuButton(
-                text = "Play",
+                text = stringResource(R.string.main_menu_play),
                 icon = Icons.Default.PlayArrow,
                 onClick = {
                     navController.navigate("game")
@@ -109,7 +111,7 @@ fun MainMenuScreen(
             Spacer(modifier = Modifier.height(16.dp))
             
             MenuButton(
-                text = "Settings",
+                text = stringResource(R.string.main_menu_settings),
                 icon = Icons.Default.Settings,
                 onClick = {
                     navController.navigate("settings")
@@ -119,7 +121,7 @@ fun MainMenuScreen(
             Spacer(modifier = Modifier.height(16.dp))
             
             MenuButton(
-                text = "Leaderboard",
+                text = stringResource(R.string.main_menu_leaderboard),
                 icon = Icons.Default.Star,
                 onClick = {
                     navController.navigate("leaderboard")
@@ -133,9 +135,9 @@ fun MainMenuScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem("Games", "${gameStats.totalGamesPlayed}")
-                StatItem("Lines", "${gameStats.totalLinesCleared}")
-                StatItem("Best Combo", "${gameStats.bestCombo}")
+                StatItem(stringResource(R.string.main_menu_stat_games), "${gameStats.totalGamesPlayed}")
+                StatItem(stringResource(R.string.main_menu_stat_lines), "${gameStats.totalLinesCleared}")
+                StatItem(stringResource(R.string.main_menu_stat_best_combo), "${gameStats.bestCombo}")
             }
         }
     }

@@ -12,11 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.chromachaos.game.R
 import com.chromachaos.game.data.model.Difficulty
 import com.chromachaos.game.data.model.GameSettings
 import com.chromachaos.game.presentation.viewmodel.MainViewModel
@@ -53,13 +55,13 @@ fun SettingsScreen(
                 IconButton(onClick = { navController.navigateUp() }) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.settings_back),
                         tint = Color.White
                     )
                 }
                 
                 Text(
-                    text = "Settings",
+                    text = stringResource(R.string.settings_title),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -71,14 +73,14 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             // Grid Size Settings
-            SettingsSection(title = "Grid Size") {
+            SettingsSection(title = stringResource(R.string.settings_grid_size)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Width",
+                        text = stringResource(R.string.settings_width),
                         color = Color.White,
                         fontSize = 16.sp
                     )
@@ -95,7 +97,7 @@ fun SettingsScreen(
                             }
                         ) {
                             Text(
-                                text = "-",
+                                text = stringResource(R.string.settings_decrement),
                                 color = Color.White,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
@@ -117,7 +119,7 @@ fun SettingsScreen(
                             }
                         ) {
                             Text(
-                                text = "+",
+                                text = stringResource(R.string.settings_increment),
                                 color = Color.White,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
@@ -134,7 +136,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Height",
+                        text = stringResource(R.string.settings_height),
                         color = Color.White,
                         fontSize = 16.sp
                     )
@@ -151,7 +153,7 @@ fun SettingsScreen(
                             }
                         ) {
                             Text(
-                                text = "-",
+                                text = stringResource(R.string.settings_decrement),
                                 color = Color.White,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
@@ -173,7 +175,7 @@ fun SettingsScreen(
                             }
                         ) {
                             Text(
-                                text = "+",
+                                text = stringResource(R.string.settings_increment),
                                 color = Color.White,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
@@ -186,7 +188,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             // Difficulty Settings
-            SettingsSection(title = "Difficulty") {
+            SettingsSection(title = stringResource(R.string.settings_difficulty)) {
                 Difficulty.values().forEach { difficulty ->
                     Row(
                         modifier = Modifier
@@ -218,7 +220,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             // Game Features
-            SettingsSection(title = "Game Features") {
+            SettingsSection(title = stringResource(R.string.settings_game_features)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -227,7 +229,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Special Blocks",
+                        text = stringResource(R.string.settings_special_blocks),
                         color = Color.White,
                         fontSize = 16.sp
                     )
@@ -254,7 +256,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Sound Effects",
+                        text = stringResource(R.string.settings_sound_effects),
                         color = Color.White,
                         fontSize = 16.sp
                     )
@@ -281,7 +283,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Vibration",
+                        text = stringResource(R.string.settings_vibration),
                         color = Color.White,
                         fontSize = 16.sp
                     )
@@ -317,7 +319,7 @@ fun SettingsScreen(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "Save Settings",
+                    text = stringResource(R.string.settings_save),
                     color = Color.Black,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold

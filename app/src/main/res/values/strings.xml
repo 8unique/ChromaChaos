@@ -1,4 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Chroma Chaos</string>
+
+    <!-- GameScreen -->
+    <string name="game_screen_back">Back</string>
+    <string name="game_screen_score">Score: %d</string>
+    <string name="game_screen_level_lines">Level: %1$d | Lines: %2$d</string>
+    <string name="game_screen_resume">Resume</string>
+    <string name="game_screen_pause">Pause</string>
+    <string name="game_screen_next">Next</string>
+    <string name="game_screen_combo_multiplier">Combo Multiplier</string>
+    <string name="game_screen_chain">Chain</string>
+    <string name="game_screen_chain_count">x%d</string>
+    <string name="game_screen_rotate">Rotate</string>
+    <string name="game_screen_drop">Drop</string>
+    <string name="game_screen_control_left">←</string>
+    <string name="game_screen_control_right">→</string>
+    <string name="game_screen_control_down">↓</string>
+    <string name="game_screen_game_over">Game Over</string>
+    <string name="game_screen_final_score">Final Score: %d</string>
+    <string name="game_screen_play_again">Play Again</string>
+    <string name="game_screen_main_menu">Main Menu</string>
+
+    <!-- MainMenuScreen -->
+    <string name="main_menu_title_chroma">CHROMA</string>
+    <string name="main_menu_title_chaos">CHAOS</string>
+    <string name="main_menu_high_score">High Score</string>
+    <string name="main_menu_play">Play</string>
+    <string name="main_menu_settings">Settings</string>
+    <string name="main_menu_leaderboard">Leaderboard</string>
+    <string name="main_menu_stat_games">Games</string>
+    <string name="main_menu_stat_lines">Lines</string>
+    <string name="main_menu_stat_best_combo">Best Combo</string>
+
+    <!-- OnboardingScreen -->
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_header">Welcome to Chroma Chaos</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_start_playing">Start Playing</string>
+    <string name="onboarding_welcome_title">Welcome to Chroma Chaos!</string>
+    <string name="onboarding_welcome_description">Match colorful blocks to clear lines and achieve the highest score!</string>
+    <string name="onboarding_how_to_play">How to Play</string>
+    <string name="onboarding_instructions">• Drag blocks left/right to move\n• Tap to rotate blocks\n• Swipe down to drop quickly\n• Clear lines to score points</string>
+    <string name="onboarding_choose_difficulty">Choose Difficulty</string>
+    <string name="onboarding_difficulty_easy_desc">Slower speed, more time to think</string>
+    <string name="onboarding_difficulty_normal_desc">Balanced gameplay</string>
+    <string name="onboarding_difficulty_hard_desc">Faster speed, challenging</string>
+    <string name="onboarding_difficulty_expert_desc">Maximum challenge</string>
+    <string name="onboarding_game_settings">Game Settings</string>
+    <string name="onboarding_sound_effects">Sound Effects</string>
+    <string name="onboarding_enable_game_sounds">Enable game sounds</string>
+    <string name="onboarding_vibration">Vibration</string>
+    <string name="onboarding_enable_haptic_feedback">Enable haptic feedback</string>
+    <string name="onboarding_special_blocks">Special Blocks</string>
+    <string name="onboarding_enable_special_blocks">Enable special jewel blocks</string>
+    <string name="onboarding_ready_title">You\'re Ready!</string>
+    <string name="onboarding_ready_description">Your settings have been saved. You can change them anytime in the settings menu.</string>
+    <string name="onboarding_lets_play">Let\'s Play!</string>
+    <string name="onboarding_lets_play_description">Tap \'Start Playing\' to begin your Chroma Chaos adventure!</string>
+
+    <!-- SettingsScreen -->
+    <string name="settings_back">Back</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_grid_size">Grid Size</string>
+    <string name="settings_width">Width</string>
+    <string name="settings_decrement">-</string>
+    <string name="settings_increment">+</string>
+    <string name="settings_height">Height</string>
+    <string name="settings_difficulty">Difficulty</string>
+    <string name="settings_game_features">Game Features</string>
+    <string name="settings_special_blocks">Special Blocks</string>
+    <string name="settings_sound_effects">Sound Effects</string>
+    <string name="settings_vibration">Vibration</string>
+    <string name="settings_save">Save Settings</string>
+
+    <!-- LeaderboardScreen -->
+    <string name="leaderboard_back">Back</string>
+    <string name="leaderboard_title">Leaderboard</string>
+    <string name="leaderboard_high_score">High Score</string>
+    <string name="leaderboard_games_played">Games Played</string>
+    <string name="leaderboard_lines_cleared">Lines Cleared</string>
+    <string name="leaderboard_best_combo">Best Combo</string>
+    <string name="leaderboard_total_play_time">Total Play Time</string>
+    <string name="leaderboard_achievements">Achievements</string>
+    <string name="leaderboard_first_game">First Game</string>
+    <string name="leaderboard_first_game_desc">Complete your first game</string>
+    <string name="leaderboard_line_master">Line Master</string>
+    <string name="leaderboard_line_master_desc">Clear 100 lines</string>
+    <string name="leaderboard_combo_king">Combo King</string>
+    <string name="leaderboard_combo_king_desc">Achieve a 5x combo</string>
+    <string name="leaderboard_high_scorer">High Scorer</string>
+    <string name="leaderboard_high_scorer_desc">Score 10,000 points</string>
+    <string name="leaderboard_unlocked">✓</string>
 </resources> 

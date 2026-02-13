@@ -14,12 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.chromachaos.game.R
 import com.chromachaos.game.presentation.viewmodel.MainViewModel
 
 @Composable
@@ -48,13 +50,13 @@ fun LeaderboardScreen(
                 IconButton(onClick = { navController.navigateUp() }) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.leaderboard_back),
                         tint = Color.White
                     )
                 }
                 
                 Text(
-                    text = "Leaderboard",
+                    text = stringResource(R.string.leaderboard_title),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -87,7 +89,7 @@ fun LeaderboardScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Text(
-                        text = "High Score",
+                        text = stringResource(R.string.leaderboard_high_score),
                         fontSize = 16.sp,
                         color = Color.White.copy(alpha = 0.8f)
                     )
@@ -109,7 +111,7 @@ fun LeaderboardScreen(
             ) {
                 item {
                     StatCard(
-                        title = "Games Played",
+                        title = stringResource(R.string.leaderboard_games_played),
                         value = "${gameStats.totalGamesPlayed}",
                         icon = Icons.Default.Star,
                         color = Color(0xFF4CAF50)
@@ -118,7 +120,7 @@ fun LeaderboardScreen(
                 
                 item {
                     StatCard(
-                        title = "Lines Cleared",
+                        title = stringResource(R.string.leaderboard_lines_cleared),
                         value = "${gameStats.totalLinesCleared}",
                         icon = Icons.Default.Star,
                         color = Color(0xFF2196F3)
@@ -127,7 +129,7 @@ fun LeaderboardScreen(
                 
                 item {
                     StatCard(
-                        title = "Best Combo",
+                        title = stringResource(R.string.leaderboard_best_combo),
                         value = "${gameStats.bestCombo}",
                         icon = Icons.Default.Star,
                         color = Color(0xFFFF9800)
@@ -136,7 +138,7 @@ fun LeaderboardScreen(
                 
                 item {
                     StatCard(
-                        title = "Total Play Time",
+                        title = stringResource(R.string.leaderboard_total_play_time),
                         value = formatPlayTime(gameStats.totalPlayTime),
                         icon = Icons.Default.Star,
                         color = Color(0xFF9C27B0)
@@ -158,7 +160,7 @@ fun LeaderboardScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Achievements",
+                        text = stringResource(R.string.leaderboard_achievements),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -167,29 +169,29 @@ fun LeaderboardScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     
                     AchievementItem(
-                        title = "First Game",
-                        description = "Complete your first game",
+                        title = stringResource(R.string.leaderboard_first_game),
+                        description = stringResource(R.string.leaderboard_first_game_desc),
                         isUnlocked = gameStats.totalGamesPlayed > 0,
                         color = Color(0xFF4CAF50)
                     )
                     
                     AchievementItem(
-                        title = "Line Master",
-                        description = "Clear 100 lines",
+                        title = stringResource(R.string.leaderboard_line_master),
+                        description = stringResource(R.string.leaderboard_line_master_desc),
                         isUnlocked = gameStats.totalLinesCleared >= 100,
                         color = Color(0xFF2196F3)
                     )
                     
                     AchievementItem(
-                        title = "Combo King",
-                        description = "Achieve a 5x combo",
+                        title = stringResource(R.string.leaderboard_combo_king),
+                        description = stringResource(R.string.leaderboard_combo_king_desc),
                         isUnlocked = gameStats.bestCombo >= 5,
                         color = Color(0xFFFF9800)
                     )
                     
                     AchievementItem(
-                        title = "High Scorer",
-                        description = "Score 10,000 points",
+                        title = stringResource(R.string.leaderboard_high_scorer),
+                        description = stringResource(R.string.leaderboard_high_scorer_desc),
                         isUnlocked = gameStats.highScore >= 10000,
                         color = Color(0xFFFFD700)
                     )
@@ -289,7 +291,7 @@ fun AchievementItem(
         
         if (isUnlocked) {
             Text(
-                text = "✓",
+                text = stringResource(R.string.leaderboard_unlocked),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = color
