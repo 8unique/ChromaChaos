@@ -51,7 +51,8 @@ class GameRepositoryImpl @Inject constructor(
     
     override fun generateRandomBlock(): Block {
         val random = Random()
-        val shapes = BlockShape.values()
+        // Exclude I-shape: a 4-block straight line self-clears immediately
+        val shapes = BlockShape.entries.filter { it != BlockShape.I }
         val colors = BlockColors.allColors
 
         val shape = shapes[random.nextInt(shapes.size)]
@@ -67,9 +68,10 @@ class GameRepositoryImpl @Inject constructor(
 
     override fun generateSpecialBlock(): Block {
         val random = Random()
-        val specialTypes = SpecialBlockType.values()
+        val specialTypes = SpecialBlockType.entries
         val colors = BlockColors.allColors
-        val shapes = BlockShape.values()
+        // Exclude I-shape: a 4-block straight line self-clears immediately
+        val shapes = BlockShape.entries.filter { it != BlockShape.I }
 
         val specialType = specialTypes[random.nextInt(specialTypes.size)]
         val color = colors[random.nextInt(colors.size)]

@@ -162,7 +162,8 @@ class MainViewModel @Inject constructor(
         val startX = settings.gridWidth / 2 - 1
 
         val spawnedBlock = nextBlock?.copy(position = Position(startX, 0))
-        val isGameOver = spawnedBlock == null || !isValidPosition(spawnedBlock)
+        // Check against the cleared/gravity-applied grid, not the stale pre-clear grid
+        val isGameOver = spawnedBlock == null || !isValidPosition(spawnedBlock, boardGrid)
 
         _gameState.value = currentState.copy(
             grid = boardGrid,
@@ -196,8 +197,10 @@ class MainViewModel @Inject constructor(
     
     // ── Board helpers ───────────────────────────────────────────────────
     
-    private fun isValidPosition(block: Block): Boolean {
-        val grid = _gameState.value.grid
+    private fun isValidPosition(
+        block: Block,
+        grid: List<List<GridCell>> = _gameState.value.grid
+    ): Boolean {
         if (grid.isEmpty()) return false
         val shape = block.getRotatedShape()
         
