@@ -9,6 +9,7 @@
     <string name="game_screen_resume">Resume</string>
     <string name="game_screen_pause">Pause</string>
     <string name="game_screen_next">Next</string>
+    <string name="game_screen_next_piece">Next Piece</string>
     <string name="game_screen_combo_multiplier">Combo Multiplier</string>
     <string name="game_screen_chain">Chain</string>
     <string name="game_screen_chain_count">x%d</string>

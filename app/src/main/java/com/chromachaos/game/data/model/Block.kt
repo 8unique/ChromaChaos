@@ -115,7 +115,7 @@ enum class SpecialBlockType {
 
 object BlockColors {
     val RED = Color(0xFFE53935)
-    val BLUE = Color(0xFF2196F3)
+    val BLUE = Color(0xFF304FFE)
     val GREEN = Color(0xFF4CAF50)
     val YELLOW = Color(0xFFFFEB3B)
     val PURPLE = Color(0xFF9C27B0)

@@ -1,42 +1,53 @@
 package com.chromachaos.game.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.RotateRight
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.KeyboardDoubleArrowDown
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -48,6 +59,17 @@ import com.chromachaos.game.presentation.viewmodel.MainViewModel
 import com.chromachaos.game.presentation.viewmodel.MoveDirection
 import kotlinx.coroutines.delay
 
+// ── Neon color palette ──────────────────────────────────────────────────────────
+private val NeonBackground = Color(0xFF0A0E2A)
+private val NeonBackgroundLight = Color(0xFF0F1640)
+private val NeonCyan = Color(0xFF00E5FF)
+private val NeonCyanDim = Color(0xFF004D66)
+private val NeonCyanBorder = Color(0xFF0088AA)
+private val NeonGridLine = Color(0xFF0C3A5A)
+private val NeonCellBg = Color(0xFF0B1A3A)
+private val NeonGlow = Color(0xFF00BFFF)
+private val NeonTextPrimary = Color.White
+private val NeonTextSecondary = Color(0xFFAADDFF)
 
 @Composable
 fun GameScreen(
@@ -55,12 +77,11 @@ fun GameScreen(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val gameState by viewModel.gameState.collectAsState()
-    val scope = rememberCoroutineScope()
-    
+
     LaunchedEffect(Unit) {
         viewModel.startNewGame()
     }
-    
+
     LaunchedEffect(gameState.isPaused, gameState.gameSpeed, gameState.isGameOver) {
         if (!gameState.isPaused && !gameState.isGameOver) {
             while (true) {
@@ -69,72 +90,59 @@ fun GameScreen(
             }
         }
     }
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1A237E))
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(NeonBackground, Color(0xFF060A1E), NeonBackground)
+                )
+            )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            // Header
-            GameHeader(
+            // ── Top info bar ──────────────────────────────────────────────
+            NeonTopBar(
                 score = gameState.score,
                 level = gameState.level,
                 linesCleared = gameState.linesCleared,
-                isPaused = gameState.isPaused,
-                onPauseToggle = {
-                    if (gameState.isPaused) viewModel.resumeGame() else viewModel.pauseGame()
-                },
-                onBack = { navController.navigateUp() }
+                nextBlock = gameState.nextBlock
             )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Game Area
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Game Grid
-                GameGrid(
-                    grid = gameState.grid,
-                    currentBlock = gameState.currentBlock,
-                    modifier = Modifier.weight(2f)
-                )
-                
-                // Side Panel
-                GameSidePanel(
-                    nextBlock = gameState.nextBlock,
-                    combo = gameState.combo,
-                    chainCount = gameState.chainCount,
-                    onRotate = { viewModel.rotateBlock() },
-                    onDrop = { viewModel.dropBlock() }
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Controls
-            GameControls(
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ── Game grid ─────────────────────────────────────────────────
+            NeonGameGrid(
+                grid = gameState.grid,
+                currentBlock = gameState.currentBlock,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ── Bottom controls ───────────────────────────────────────────
+            NeonControls(
                 onLeft = { viewModel.moveBlock(MoveDirection.LEFT) },
                 onRight = { viewModel.moveBlock(MoveDirection.RIGHT) },
                 onDown = { viewModel.moveBlock(MoveDirection.DOWN) },
                 onRotate = { viewModel.rotateBlock() },
                 onDrop = { viewModel.dropBlock() }
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
-        
-        // Game Over Dialog
+
+        // ── Game Over overlay ─────────────────────────────────────────────
         if (gameState.isGameOver) {
             GameOverDialog(
                 score = gameState.score,
-                onPlayAgain = {
-                    viewModel.startNewGame()
-                },
+                onPlayAgain = { viewModel.startNewGame() },
                 onBackToMenu = {
                     navController.navigate("main_menu") {
                         popUpTo("game") { inclusive = true }
@@ -145,265 +153,85 @@ fun GameScreen(
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Top bar: Score (left) + Next Piece preview (right)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 @Composable
-fun GameHeader(
+private fun NeonTopBar(
     score: Int,
     level: Int,
     linesCleared: Int,
-    isPaused: Boolean,
-    onPauseToggle: () -> Unit,
-    onBack: () -> Unit
+    nextBlock: Block?
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.game_screen_back),
-                tint = Color.White
-            )
-        }
-        
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Score / level / lines — left side
+        Column(
+            modifier = Modifier
+                .background(
+                    color = Color.Black.copy(alpha = 0.45f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .border(
+                    width = 1.dp,
+                    color = NeonCyanBorder.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+        ) {
             Text(
                 text = stringResource(R.string.game_screen_score, score),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = NeonTextPrimary
             )
             Text(
                 text = stringResource(R.string.game_screen_level_lines, level, linesCleared),
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.8f)
+                fontSize = 13.sp,
+                color = NeonTextSecondary
             )
         }
-        
-        IconButton(onClick = onPauseToggle) {
-            Icon(
-                imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                contentDescription = if (isPaused) stringResource(R.string.game_screen_resume) else stringResource(R.string.game_screen_pause),
-                tint = Color.White
-            )
-        }
-    }
-}
 
-@Composable
-fun GameGrid(
-    grid: List<List<GridCell>>,
-    currentBlock: Block?,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Black.copy(alpha = 0.3f)
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+        // Next Piece — right side
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp)
+                .background(
+                    color = Color.Black.copy(alpha = 0.45f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .border(
+                    width = 1.dp,
+                    color = NeonCyanBorder.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            grid.forEachIndexed { y, row ->
-                Row(modifier = Modifier.weight(1f)) {
-                    row.forEachIndexed { x, cell ->
-                        GridCell(
-                            cell = cell,
-                            isCurrentBlock = currentBlock?.let { block ->
-                                val shape = block.getRotatedShape()
-                                val blockX = block.position.x
-                                val blockY = block.position.y
-
-                                for (sy in shape.indices) {
-                                    for (sx in shape[sy].indices) {
-                                        if (shape[sy][sx] &&
-                                            x == blockX + sx &&
-                                            y == blockY + sy) {
-                                            return@let true
-                                        }
-                                    }
-                                }
-                                false
-                            } ?: false,
-                            blockColor = currentBlock?.color,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .padding(0.5.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun GridCell(
-    cell: GridCell,
-    isCurrentBlock: Boolean,
-    blockColor: Color?,
-    modifier: Modifier = Modifier
-) {
-    val backgroundColor = when {
-        isCurrentBlock -> blockColor ?: Color.Transparent
-        cell.color != null -> cell.color
-        else -> Color.Transparent
-    }
-    
-    Box(
-        modifier = modifier
-            .background(
-                color = backgroundColor,
-                shape = RoundedCornerShape(3.dp)
+            Text(
+                text = stringResource(R.string.game_screen_next_piece),
+                fontSize = 12.sp,
+                color = NeonTextSecondary
             )
-            .border(
-                width = if (backgroundColor == Color.Transparent) 0.dp else 1.dp,
-                color = if (backgroundColor == Color.Transparent) 
-                    Color.White.copy(alpha = 0.1f) 
-                else 
-                    Color.White.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(3.dp)
-            )
-    )
-}
-
-@Composable
-fun GameSidePanel(
-    nextBlock: Block?,
-    combo: Int,
-    chainCount: Int,
-    onRotate: () -> Unit,
-    onDrop: () -> Unit
-) {
-    Column(
-        modifier = Modifier.width(100.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Next Block Preview
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White.copy(alpha = 0.1f)
-            ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(R.string.game_screen_next),
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                nextBlock?.let { block ->
-                    NextBlockPreview(block = block)
-                }
-            }
-        }
-        
-        // Combo
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White.copy(alpha = 0.1f)
-            ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(id = R.string.game_screen_combo_multiplier),
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-                Text(
-                    text = "$combo",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFFFD700)
-                )
-            }
-        }
-
-        // Chain indicator
-        if (chainCount > 0) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF00E676).copy(alpha = 0.3f)
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = stringResource(R.string.game_screen_chain),
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.8f)
-                    )
-                    Text(
-                        text = stringResource(R.string.game_screen_chain_count, chainCount),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF00E676)
-                    )
-                }
-            }
-        }
-        
-        // Action Buttons
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            IconButton(
-                onClick = onRotate,
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = Color.White.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.RotateRight,
-                    contentDescription = stringResource(R.string.game_screen_rotate),
-                    tint = Color.White
-                )
-            }
-            
-            Button(
-                onClick = onDrop,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFD700)
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.game_screen_drop),
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold
-                )
+            Spacer(modifier = Modifier.height(4.dp))
+            nextBlock?.let { block ->
+                NeonNextBlockPreview(block = block)
             }
         }
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Next-piece mini preview (coloured cells on transparent background)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 @Composable
-fun NextBlockPreview(block: Block) {
+private fun NeonNextBlockPreview(block: Block) {
     val shape = block.getRotatedShape()
     val color = block.color
 
@@ -413,12 +241,19 @@ fun NextBlockPreview(block: Block) {
                 row.forEach { isFilled ->
                     Box(
                         modifier = Modifier
-                            .size(8.dp)
+                            .size(14.dp)
+                            .padding(1.dp)
                             .background(
                                 color = if (isFilled) color else Color.Transparent,
-                                shape = RoundedCornerShape(1.dp)
+                                shape = RoundedCornerShape(2.dp)
                             )
-                            .padding(1.dp)
+                            .then(
+                                if (isFilled) Modifier.border(
+                                    width = 0.5.dp,
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(2.dp)
+                                ) else Modifier
+                            )
                     )
                 }
             }
@@ -426,8 +261,136 @@ fun NextBlockPreview(block: Block) {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Game grid — drawn on a Canvas for crisp neon lines + glow border
+// ═══════════════════════════════════════════════════════════════════════════════
+
 @Composable
-fun GameControls(
+fun NeonGameGrid(
+    grid: List<List<GridCell>>,
+    currentBlock: Block?,
+    modifier: Modifier = Modifier
+) {
+    if (grid.isEmpty()) return
+
+    val rows = grid.size
+    val cols = grid[0].size
+
+    // Pre-compute which cells belong to the current block
+    val blockCells = mutableSetOf<Pair<Int, Int>>()
+    currentBlock?.let { block ->
+        val shape = block.getRotatedShape()
+        for (sy in shape.indices) {
+            for (sx in shape[sy].indices) {
+                if (shape[sy][sx]) {
+                    blockCells.add(Pair(block.position.x + sx, block.position.y + sy))
+                }
+            }
+        }
+    }
+
+    val blockColor = currentBlock?.color ?: Color.Transparent
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .border(
+                width = 2.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(NeonCyan.copy(alpha = 0.7f), NeonCyanDim, NeonCyan.copy(alpha = 0.7f))
+                ),
+                shape = RoundedCornerShape(10.dp)
+            )
+            .drawBehind {
+                // Outer glow
+                drawRoundRect(
+                    color = NeonGlow.copy(alpha = 0.10f),
+                    cornerRadius = CornerRadius(10.dp.toPx()),
+                    style = Stroke(width = 6.dp.toPx())
+                )
+            }
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val cellW = size.width / cols
+            val cellH = size.height / rows
+
+            // Background fill
+            drawRect(color = NeonCellBg)
+
+            // Draw grid lines (vertical)
+            for (c in 0..cols) {
+                val x = c * cellW
+                drawLine(
+                    color = NeonGridLine,
+                    start = Offset(x, 0f),
+                    end = Offset(x, size.height),
+                    strokeWidth = 1f
+                )
+            }
+
+            // Draw grid lines (horizontal)
+            for (r in 0..rows) {
+                val y = r * cellH
+                drawLine(
+                    color = NeonGridLine,
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1f
+                )
+            }
+
+            // Draw filled cells (landed blocks + current block)
+            for (y in 0 until rows) {
+                for (x in 0 until cols) {
+                    val cell = grid[y][x]
+                    val isBlock = blockCells.contains(Pair(x, y))
+                    val fillColor: Color? = when {
+                        isBlock -> blockColor
+                        cell.color != null -> cell.color
+                        else -> null
+                    }
+
+                    if (fillColor != null) {
+                        val left = x * cellW + 1f
+                        val top = y * cellH + 1f
+                        val cw = cellW - 2f
+                        val ch = cellH - 2f
+
+                        // Cell glow background
+                        drawRect(
+                            color = fillColor.copy(alpha = 0.25f),
+                            topLeft = Offset(left - 2f, top - 2f),
+                            size = Size(cw + 4f, ch + 4f)
+                        )
+
+                        // Solid cell
+                        drawRoundRect(
+                            color = fillColor,
+                            topLeft = Offset(left, top),
+                            size = Size(cw, ch),
+                            cornerRadius = CornerRadius(3f, 3f)
+                        )
+
+                        // Highlight edge (top-left shine)
+                        drawRoundRect(
+                            color = Color.White.copy(alpha = 0.25f),
+                            topLeft = Offset(left + 1f, top + 1f),
+                            size = Size(cw - 2f, ch * 0.35f),
+                            cornerRadius = CornerRadius(3f, 3f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Bottom controls — arrows · rotate · star / drop
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun NeonControls(
     onLeft: () -> Unit,
     onRight: () -> Unit,
     onDown: () -> Unit,
@@ -435,72 +398,101 @@ fun GameControls(
     onDrop: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Movement Controls
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ControlButton(
-                text = stringResource(R.string.game_screen_control_left),
-                onClick = onLeft,
-                modifier = Modifier.size(48.dp)
-            )
-            
-            ControlButton(
-                text = stringResource(R.string.game_screen_control_right),
-                onClick = onRight,
-                modifier = Modifier.size(48.dp)
-            )
-            
-            ControlButton(
-                text = stringResource(R.string.game_screen_control_down),
-                onClick = onDown,
-                modifier = Modifier.size(48.dp)
-            )
-        }
-        
-        // Action Controls
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ControlButton(
-                text = stringResource(R.string.game_screen_rotate),
+
+
+        // Rotate button with label
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            NeonCircleButton(
+                icon = Icons.Filled.Refresh,
+                contentDescription = stringResource(R.string.game_screen_rotate),
                 onClick = onRotate,
-                modifier = Modifier.width(80.dp).height(48.dp)
+                size = 52
             )
-            
-            ControlButton(
-                text = stringResource(R.string.game_screen_drop),
-                onClick = onDrop,
-                modifier = Modifier.width(80.dp).height(48.dp)
+            Text(
+                text = stringResource(R.string.game_screen_rotate),
+                fontSize = 11.sp,
+                color = NeonCyan,
+                modifier = Modifier.padding(top = 2.dp)
             )
         }
+
+        // ← → ↓  movement cluster
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            NeonCircleButton(
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.game_screen_control_left),
+                onClick = onLeft
+            )
+            NeonCircleButton(
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = stringResource(R.string.game_screen_control_right),
+                onClick = onRight
+            )
+            NeonCircleButton(
+                icon = Icons.Filled.ArrowDownward,
+                contentDescription = stringResource(R.string.game_screen_control_down),
+                onClick = onDown
+            )
+        }
+
+
+        // Star / drop button
+        NeonCircleButton(
+            icon = Icons.Filled.KeyboardDoubleArrowDown,
+            contentDescription = stringResource(R.string.game_screen_drop),
+            onClick = onDrop,
+            tint = NeonCyan
+        )
     }
 }
 
 @Composable
-fun ControlButton(
-    text: String,
+private fun NeonCircleButton(
+    icon: ImageVector,
+    contentDescription: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    size: Int = 48,
+    tint: Color = NeonCyan
 ) {
-    Button(
-        onClick = onClick,
-        modifier = modifier,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.White.copy(alpha = 0.2f)
-        ),
-        shape = RoundedCornerShape(8.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .size(size.dp)
+            .border(
+                width = 1.5.dp,
+                color = NeonCyan.copy(alpha = 0.6f),
+                shape = CircleShape
+            )
+            .background(
+                color = NeonCyan.copy(alpha = 0.08f),
+                shape = CircleShape
+            )
+            .clip(CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = text,
-            color = Color.White,
-            fontWeight = FontWeight.Medium
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size((size * 0.5f).dp)
         )
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Game-over dialog (kept mostly identical, re-themed to neon)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun GameOverDialog(
@@ -511,67 +503,75 @@ fun GameOverDialog(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
+            .background(Color.Black.copy(alpha = 0.75f)),
         contentAlignment = Alignment.Center
     ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(32.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF1A237E)
-            ),
+                .padding(32.dp)
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(NeonCyan.copy(alpha = 0.6f), NeonCyanDim)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ),
+            colors = CardDefaults.cardColors(containerColor = NeonBackgroundLight),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = stringResource(R.string.game_screen_game_over),
-                    fontSize = 24.sp,
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = NeonCyan,
+                    textAlign = TextAlign.Center
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Text(
                     text = stringResource(R.string.game_screen_final_score, score),
                     fontSize = 18.sp,
                     color = Color(0xFFFFD700),
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
                 ) {
                     Button(
                         onClick = onPlayAgain,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFFD700)
-                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
                             text = stringResource(R.string.game_screen_play_again),
-                            color = Color.Black,
+                            color = NeonBackground,
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    
+
                     Button(
                         onClick = onBackToMenu,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White.copy(alpha = 0.2f)
+                            containerColor = NeonCyan.copy(alpha = 0.15f)
                         ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
                             text = stringResource(R.string.game_screen_main_menu),
-                            color = Color.White,
+                            color = NeonCyan,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -579,4 +579,4 @@ fun GameOverDialog(
             }
         }
     }
-} 
+}
