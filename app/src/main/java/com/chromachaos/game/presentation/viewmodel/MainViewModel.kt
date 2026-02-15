@@ -26,7 +26,7 @@ class MainViewModel @Inject constructor(
     private var gameStartTime: Long = 0L
 
     companion object {
-        /** Minimum consecutive same-color blocks in a straight line to clear. */
+        /** Rule A — minimum consecutive same-color blocks in a straight line to clear. */
         private const val MIN_LINE_LENGTH = 4
     }
     
@@ -120,49 +120,69 @@ class MainViewModel @Inject constructor(
         placeBlock(currentBlock.copy(position = dropPosition))
     }
     
-    // ── Core game flow after a piece locks ──────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════
+    //  CORE GAME LOOP
+    //
+    //  Piece locks → merge to board →
+    //    Step 1: detect ALL straight lines (Rule A)
+    //    Step 2: detect ALL solid 2×3 / 3×2 rectangles (Rule B)
+    //    Step 3: merge marks (union — no double-clear)
+    //    Step 4: clear all marked simultaneously
+    //    Step 5: apply gravity
+    //    Step 6: repeat detection (combo loop)
+    //  Stop when no new clear → spawn next piece
+    // ══════════════════════════════════════════════════════════════════════
+
     private fun placeBlock(block: Block) {
         val currentState = _gameState.value
         var boardGrid = placeBlockOnGrid(currentState.grid, block)
         var totalScore = 0
         var totalBlocksCleared = 0
-        var chainStep = 0
 
-        // ── Chain reaction loop: scan → clear → gravity → repeat ────────
+        // Combo = chain depth within THIS placement.
+        // Increases when gravity causes another clear.
+        // Resets when new piece spawns.
+        var combo = 0
+
+        // ── Chain reaction loop: detect → clear → gravity → repeat ──────
         while (true) {
-            val cellsToClear = findColorLines(boardGrid, MIN_LINE_LENGTH)
-            if (cellsToClear.isEmpty()) break
+            // Step 1: Rule A — straight line detection (≥4 consecutive same-color)
+            val lineCells = findColorLines(boardGrid, MIN_LINE_LENGTH)
+            // Step 2: Rule B — solid rectangle detection (2×3 / 3×2 same-color)
+            val rectCells = findSolidRectangles(boardGrid)
+            // Step 3: Merge (union) — no double-clearing
+            val cellsToClear = lineCells union rectCells
 
-            chainStep++
+            if (cellsToClear.isEmpty()) break          // no clears → stop chain
+
+            combo++
             totalBlocksCleared += cellsToClear.size
 
-            // Score: 10 pts per block × combo multiplier
-            val multiplier = gameUseCase.getComboMultiplier(chainStep)
+            // Score = clearedBlocks × 10 × comboMultiplier
+            val multiplier = gameUseCase.getComboMultiplier(combo)
             val stepScore = gameUseCase.calculateColorLineScore(cellsToClear.size)
             totalScore += (stepScore * multiplier).toInt()
 
+            // Step 4: Clear all marked cells simultaneously
             boardGrid = clearCells(boardGrid, cellsToClear)
+            // Step 5: Classic gravity — compact non-empty cells downward
             boardGrid = applyGravity(boardGrid)
+            // Step 6: Loop back — scan again after gravity for chain reaction
         }
-
-        val anyClearHappened = chainStep > 0
-
-        // ── Combo tracking (across piece placements) ────────────────────
-        val newCombo = if (anyClearHappened) currentState.combo + 1 else 0
 
         // ── Level / speed ───────────────────────────────────────────────
         val newTotalLines = currentState.linesCleared + totalBlocksCleared
         val newLevel = gameUseCase.calculateLevel(newTotalLines)
         val newScore = currentState.score + totalScore
 
-        // ── Spawn next piece ────────────────────────────────────────────
+        // ── Spawn next piece (spec §16 final step) ──────────────────────
         val nextBlock = currentState.nextBlock
         val newNextBlock = gameUseCase.generateRandomBlock()
         val settings = _gameSettings.value
         val startX = settings.gridWidth / 2 - 1
 
         val spawnedBlock = nextBlock?.copy(position = Position(startX, 0))
-        // Check against the cleared/gravity-applied grid, not the stale pre-clear grid
+        // Check against the cleared+gravity grid, not the stale pre-clear grid
         val isGameOver = spawnedBlock == null || !isValidPosition(spawnedBlock, boardGrid)
 
         _gameState.value = currentState.copy(
@@ -172,17 +192,17 @@ class MainViewModel @Inject constructor(
             score = newScore,
             level = newLevel,
             linesCleared = newTotalLines,
-            combo = newCombo,
-            chainCount = chainStep,
+            combo = combo,                // per-placement combo (spec §12)
+            chainCount = combo,           // same value, kept for UI display
             isGameOver = isGameOver,
             gameSpeed = gameUseCase.calculateGameSpeed(newLevel)
         )
 
         // ── Persist stats ───────────────────────────────────────────────
-        if (anyClearHappened) {
+        if (combo > 0) {
             viewModelScope.launch {
                 gameUseCase.addLinesCleared(totalBlocksCleared)
-                gameUseCase.updateBestCombo(newCombo)
+                gameUseCase.updateBestCombo(combo)
             }
         }
 
@@ -245,14 +265,25 @@ class MainViewModel @Inject constructor(
         return newGrid.map { it.toList() }
     }
 
-    // ── Straight-line color clear system ─────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════
+    //  RULE A — STRAIGHT LINE CLEAR
+    //
+    //  4+ consecutive same-color blocks in a straight horizontal or
+    //  vertical line. No diagonals, no L/T/stair shapes — only runs.
+    //
+    //  Board scanned fully (H then V); cells collected into a
+    //  de-duplicated set so crossing-point cells are listed once.
+    // ══════════════════════════════════════════════════════════════════════
 
     private data class Cell(val x: Int, val y: Int)
 
     /**
-     * Scan the board for 4+ consecutive same-color blocks in
-     * straight horizontal or vertical lines. Returns a de-duplicated
-     * set of cells to clear (a cell at an intersection is only listed once).
+     * RULE A — Scan for ≥[minLength] consecutive same-color runs.
+     *
+     * Step 1 — Horizontal: each row, left→right.
+     * Step 2 — Vertical: each column, top→bottom.
+     *
+     * Returns de-duplicated [Set].
      */
     private fun findColorLines(board: List<List<GridCell>>, minLength: Int): Set<Cell> {
         val height = board.size
@@ -271,8 +302,7 @@ class MainViewModel @Inject constructor(
                 while (runEnd < width && board[y][runEnd].color == color) {
                     runEnd++
                 }
-                val runLen = runEnd - runStart
-                if (runLen >= minLength) {
+                if (runEnd - runStart >= minLength) {
                     for (x in runStart until runEnd) {
                         toClear.add(Cell(x, y))
                     }
@@ -292,8 +322,7 @@ class MainViewModel @Inject constructor(
                 while (runEnd < height && board[runEnd][x].color == color) {
                     runEnd++
                 }
-                val runLen = runEnd - runStart
-                if (runLen >= minLength) {
+                if (runEnd - runStart >= minLength) {
                     for (y in runStart until runEnd) {
                         toClear.add(Cell(x, y))
                     }
@@ -305,8 +334,83 @@ class MainViewModel @Inject constructor(
         return toClear
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  RULE B — SOLID RECTANGLE CLEAR
+    //
+    //  A solid, fully-filled rectangle of same-color blocks clears when
+    //  its dimensions are exactly 2×3 (2 wide, 3 tall) or 3×2 (3 wide,
+    //  2 tall). The system uses a sliding window to find ALL such
+    //  sub-rectangles on the board.
+    //
+    //  Clears:     3×2, 2×3, and larger shapes containing them (e.g. 3×3
+    //              is covered by overlapping 3×2 + 2×3 windows).
+    //  No clear:   2×2 (only 4), staircases, thin zigzags, irregular
+    //              shapes that don't contain a full 2×3 or 3×2.
+    // ══════════════════════════════════════════════════════════════════════
+
     /**
-     * Set the given cells to empty.
+     * RULE B — Sliding-window scan for every solid same-color rectangle
+     * of size 3×2 or 2×3. Returns the de-duplicated union of all cells
+     * belonging to qualifying rectangles.
+     */
+    private fun findSolidRectangles(board: List<List<GridCell>>): Set<Cell> {
+        val height = board.size
+        if (height == 0) return emptySet()
+        val width = board[0].size
+        val toClear = mutableSetOf<Cell>()
+
+        // ── Scan all 3-wide × 2-tall rectangles ─────────────────────────
+        for (y in 0..height - 2) {
+            for (x in 0..width - 3) {
+                val color = board[y][x].color ?: continue
+                if (isFilledRect(board, x, y, 3, 2, color)) {
+                    for (dy in 0..1) {
+                        for (dx in 0..2) {
+                            toClear.add(Cell(x + dx, y + dy))
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Scan all 2-wide × 3-tall rectangles ─────────────────────────
+        for (y in 0..height - 3) {
+            for (x in 0..width - 2) {
+                val color = board[y][x].color ?: continue
+                if (isFilledRect(board, x, y, 2, 3, color)) {
+                    for (dy in 0..2) {
+                        for (dx in 0..1) {
+                            toClear.add(Cell(x + dx, y + dy))
+                        }
+                    }
+                }
+            }
+        }
+
+        return toClear
+    }
+
+    /**
+     * Check whether every cell in the rectangle starting at ([x],[y])
+     * with the given [w]idth and [h]eight is filled with [color].
+     */
+    private fun isFilledRect(
+        board: List<List<GridCell>>,
+        x: Int, y: Int,
+        w: Int, h: Int,
+        color: androidx.compose.ui.graphics.Color
+    ): Boolean {
+        for (dy in 0 until h) {
+            for (dx in 0 until w) {
+                if (board[y + dy][x + dx].color != color) return false
+            }
+        }
+        return true
+    }
+
+    /**
+     * Step 4 – Clear all marked cells simultaneously.
+     * Mark first, clear after — prevents detection errors.
      */
     private fun clearCells(board: List<List<GridCell>>, cells: Set<Cell>): List<List<GridCell>> {
         if (cells.isEmpty()) return board
@@ -318,7 +422,9 @@ class MainViewModel @Inject constructor(
     }
 
     /**
-     * Gravity: for each column, compact filled cells downward.
+     * Step 5 – GRAVITY SYSTEM
+     * For each column, compact all non-empty cells downward and
+     * fill the top with empty cells. Classic Tetris gravity.
      */
     private fun applyGravity(board: List<List<GridCell>>): List<List<GridCell>> {
         val height = board.size
