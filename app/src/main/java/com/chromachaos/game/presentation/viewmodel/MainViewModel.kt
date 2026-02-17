@@ -25,6 +25,9 @@ class MainViewModel @Inject constructor(
     
     private var gameStartTime: Long = 0L
 
+    /** Tracks whether the last spawned block was special (no consecutive specials). */
+    private var lastBlockWasSpecial: Boolean = false
+
     companion object {
         /** Rule A — minimum consecutive same-color blocks in a straight line to clear. */
         private const val MIN_LINE_LENGTH = 4
@@ -55,10 +58,12 @@ class MainViewModel @Inject constructor(
         
         val grid = List(gridHeight) { List(gridWidth) { GridCell.Empty } }
         
-        val newBlock = gameUseCase.generateRandomBlock().copy(
+        lastBlockWasSpecial = false
+
+        val newBlock = generateNextBlock().copy(
             position = Position(gridWidth / 2 - 1, 0)
         )
-        val nextBlock = gameUseCase.generateRandomBlock()
+        val nextBlock = generateNextBlock()
         
         _gameState.value = GameState(
             grid = grid,
@@ -71,6 +76,22 @@ class MainViewModel @Inject constructor(
         
         viewModelScope.launch {
             gameUseCase.incrementGamesPlayed()
+        }
+    }
+
+    /**
+     * Generate the next block, respecting special-block spawn rules.
+     * Updates [lastBlockWasSpecial] as a side-effect.
+     */
+    private fun generateNextBlock(): Block {
+        val settings = _gameSettings.value
+        val special = gameUseCase.maybeGenerateSpecialBlock(settings, lastBlockWasSpecial)
+        return if (special != null) {
+            lastBlockWasSpecial = true
+            special
+        } else {
+            lastBlockWasSpecial = false
+            gameUseCase.generateRandomBlock()
         }
     }
     
@@ -144,6 +165,15 @@ class MainViewModel @Inject constructor(
         // Resets when new piece spawns.
         var combo = 0
 
+        // ── Auto-trigger special blocks immediately on landing ──────────
+        if (block.isSpecial && block.specialType != null) {
+            val result = activateSpecialOnLand(boardGrid, block)
+            boardGrid = result.grid
+            totalScore += result.score
+            totalBlocksCleared += result.blocksCleared
+            if (result.blocksCleared > 0) combo++
+        }
+
         // ── Chain reaction loop: detect → clear → gravity → repeat ──────
         while (true) {
             // Step 1: Rule A — straight line detection (≥4 consecutive same-color)
@@ -177,7 +207,7 @@ class MainViewModel @Inject constructor(
 
         // ── Spawn next piece (spec §16 final step) ──────────────────────
         val nextBlock = currentState.nextBlock
-        val newNextBlock = gameUseCase.generateRandomBlock()
+        val newNextBlock = generateNextBlock()
         val settings = _gameSettings.value
         val startX = settings.gridWidth / 2 - 1
 
@@ -214,9 +244,164 @@ class MainViewModel @Inject constructor(
             }
         }
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  SPECIAL BLOCK AUTO-ACTIVATION (triggered on landing, not by tap)
+    // ══════════════════════════════════════════════════════════════════════
+
+    private data class SpecialResult(
+        val grid: List<List<GridCell>>,
+        val score: Int,
+        val blocksCleared: Int
+    )
+
+    /**
+     * Dispatches to the correct special-block handler when the piece lands.
+     */
+    private fun activateSpecialOnLand(board: List<List<GridCell>>, block: Block): SpecialResult {
+        // Special blocks are always DOT (1 cell), so the landing position is clear.
+        val cx = block.position.x
+        val cy = block.position.y
+
+        return when (block.specialType) {
+            SpecialBlockType.CROSS_CLEAR    -> applyCrossClear(board, cx, cy)
+            SpecialBlockType.AREA_EXPLOSION -> applyAreaExplosion(board, cx, cy)
+            SpecialBlockType.WILD           -> applyWildResolve(board, cx, cy)
+            else -> SpecialResult(board, 0, 0)
+        }
+    }
+
+    /**
+     * CROSS CLEAR — clears the entire row AND entire column the block spawns
+     * in, then applies gravity.
+     */
+    private fun applyCrossClear(
+        board: List<List<GridCell>>,
+        cx: Int, cy: Int
+    ): SpecialResult {
+        val height = board.size
+        val width = board[0].size
+        val cellsToClear = mutableSetOf<Cell>()
+
+        // Full row
+        for (x in 0 until width) cellsToClear.add(Cell(x, cy))
+        // Full column
+        for (y in 0 until height) cellsToClear.add(Cell(cx, y))
+
+        val cleared = cellsToClear.count { board[it.y][it.x].color != null }
+        val score = gameUseCase.calculateColorLineScore(cleared)
+
+        var grid = clearCells(board, cellsToClear)
+        grid = applyGravity(grid)
+
+        return SpecialResult(grid, score, cleared)
+    }
+
+    /**
+     * AREA EXPLOSION — clears the 3×3 area centred on ([cx],[cy]),
+     * then applies gravity.
+     */
+    private fun applyAreaExplosion(
+        board: List<List<GridCell>>,
+        cx: Int, cy: Int
+    ): SpecialResult {
+        val height = board.size
+        val width = board[0].size
+        val cellsToClear = mutableSetOf<Cell>()
+
+        for (dy in -1..1) {
+            for (dx in -1..1) {
+                val ny = cy + dy
+                val nx = cx + dx
+                if (ny in 0 until height && nx in 0 until width) {
+                    cellsToClear.add(Cell(nx, ny))
+                }
+            }
+        }
+
+        val cleared = cellsToClear.count { board[it.y][it.x].color != null }
+        val score = gameUseCase.calculateColorLineScore(cleared)
+
+        var grid = clearCells(board, cellsToClear)
+        grid = applyGravity(grid)
+
+        return SpecialResult(grid, score, cleared)
+    }
+
+    /**
+     * WILD BLOCK — automatically resolves to the most advantageous
+     * adjacent colour.  Tries each adjacent normal colour, picks the one
+     * that would clear the most cells in the standard detection pass.
+     * If no adjacent colour produces any clear the Wild simply stays as
+     * that colour on the board (helping future matches).
+     */
+    private fun applyWildResolve(
+        board: List<List<GridCell>>,
+        cx: Int, cy: Int
+    ): SpecialResult {
+        val height = board.size
+        val width = board[0].size
+
+        // Gather unique adjacent normal colours
+        val deltas = listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1)
+        val candidateColors = mutableSetOf<androidx.compose.ui.graphics.Color>()
+        for ((dx, dy) in deltas) {
+            val nx = cx + dx; val ny = cy + dy
+            if (ny in 0 until height && nx in 0 until width) {
+                val adj = board[ny][nx]
+                if (adj.color != null && !adj.isSpecial) {
+                    candidateColors.add(adj.color)
+                }
+            }
+        }
+
+        if (candidateColors.isEmpty()) {
+            // No neighbours — just convert Wild to a random normal colour
+            val fallback = BlockColors.allColors.random()
+            val mGrid = board.map { it.toMutableList() }.toMutableList()
+            mGrid[cy][cx] = GridCell(color = fallback, isSpecial = false, specialType = null)
+            return SpecialResult(mGrid.map { it.toList() }, 0, 0)
+        }
+
+        // For each candidate colour, simulate detection to find which clears most
+        data class Candidate(
+            val color: androidx.compose.ui.graphics.Color,
+            val clearCount: Int
+        )
+
+        val candidates = candidateColors.map { tryColor ->
+            val simGrid = board.map { it.toMutableList() }.toMutableList()
+            simGrid[cy][cx] = GridCell(color = tryColor, isSpecial = false, specialType = null)
+            val simBoard: List<List<GridCell>> = simGrid.map { it.toList() }
+            val lineCells = findColorLines(simBoard, MIN_LINE_LENGTH)
+            val rectCells = findSolidRectangles(simBoard)
+            val total = (lineCells union rectCells).size
+            Candidate(tryColor, total)
+        }
+
+        val best = candidates.maxByOrNull { it.clearCount }!!
+
+        // Apply the best colour
+        val mGrid = board.map { it.toMutableList() }.toMutableList()
+        mGrid[cy][cx] = GridCell(color = best.color, isSpecial = false, specialType = null)
+        val resolvedBoard: List<List<GridCell>> = mGrid.map { it.toList() }
+
+        // The standard chain-reaction loop in placeBlock will now pick up
+        // any clears caused by this colour swap, so return score 0 here.
+        return SpecialResult(resolvedBoard, 0, 0)
+    }
     
     // ── Board helpers ───────────────────────────────────────────────────
-    
+
+    /**
+     * Returns `true` if the cell at ([y],[x]) is a Wild cell.
+     */
+    private fun isWild(board: List<List<GridCell>>, y: Int, x: Int): Boolean {
+        val cell = board[y][x]
+        return cell.isSpecial && cell.specialType == SpecialBlockType.WILD
+    }
+
+
     private fun isValidPosition(
         block: Block,
         grid: List<List<GridCell>> = _gameState.value.grid
@@ -283,6 +468,9 @@ class MainViewModel @Inject constructor(
      * Step 1 — Horizontal: each row, left→right.
      * Step 2 — Vertical: each column, top→bottom.
      *
+     * Wild cells match any colour being scanned. A run cannot consist
+     * entirely of Wild cells (Wild does NOT start its own cluster).
+     *
      * Returns de-duplicated [Set].
      */
     private fun findColorLines(board: List<List<GridCell>>, minLength: Int): Set<Cell> {
@@ -295,14 +483,33 @@ class MainViewModel @Inject constructor(
         for (y in 0 until height) {
             var runStart = 0
             while (runStart < width) {
-                val color = board[y][runStart].color
-                if (color == null) { runStart++; continue }
+                val startCell = board[y][runStart]
+                // Determine the run colour — skip empty, look past leading Wilds
+                if (startCell.color == null) { runStart++; continue }
+
+                var runColor: androidx.compose.ui.graphics.Color? =
+                    if (isWild(board, y, runStart)) null else startCell.color
 
                 var runEnd = runStart + 1
-                while (runEnd < width && board[y][runEnd].color == color) {
-                    runEnd++
+                while (runEnd < width) {
+                    val cell = board[y][runEnd]
+                    if (cell.color == null) break
+                    if (isWild(board, y, runEnd)) {
+                        // Wild extends any run
+                        runEnd++; continue
+                    }
+                    if (runColor == null) {
+                        // First non-Wild — this defines the run colour
+                        runColor = cell.color
+                        runEnd++; continue
+                    }
+                    if (cell.color == runColor) {
+                        runEnd++; continue
+                    }
+                    break
                 }
-                if (runEnd - runStart >= minLength) {
+                // Only clear if we found at least one real colour and length ≥ min
+                if (runColor != null && runEnd - runStart >= minLength) {
                     for (x in runStart until runEnd) {
                         toClear.add(Cell(x, y))
                     }
@@ -315,16 +522,31 @@ class MainViewModel @Inject constructor(
         for (x in 0 until width) {
             var runStart = 0
             while (runStart < height) {
-                val color = board[runStart][x].color
-                if (color == null) { runStart++; continue }
+                val startCell = board[runStart][x]
+                if (startCell.color == null) { runStart++; continue }
+
+                var runColor: androidx.compose.ui.graphics.Color? =
+                    if (isWild(board, runStart, x)) null else startCell.color
 
                 var runEnd = runStart + 1
-                while (runEnd < height && board[runEnd][x].color == color) {
-                    runEnd++
+                while (runEnd < height) {
+                    val cell = board[runEnd][x]
+                    if (cell.color == null) break
+                    if (isWild(board, runEnd, x)) {
+                        runEnd++; continue
+                    }
+                    if (runColor == null) {
+                        runColor = cell.color
+                        runEnd++; continue
+                    }
+                    if (cell.color == runColor) {
+                        runEnd++; continue
+                    }
+                    break
                 }
-                if (runEnd - runStart >= minLength) {
-                    for (y in runStart until runEnd) {
-                        toClear.add(Cell(x, y))
+                if (runColor != null && runEnd - runStart >= minLength) {
+                    for (yy in runStart until runEnd) {
+                        toClear.add(Cell(x, yy))
                     }
                 }
                 runStart = runEnd
@@ -350,8 +572,9 @@ class MainViewModel @Inject constructor(
 
     /**
      * RULE B — Sliding-window scan for every solid same-color rectangle
-     * of size 3×2 or 2×3. Returns the de-duplicated union of all cells
-     * belonging to qualifying rectangles.
+     * of size 3×2 or 2×3. Wild cells count as any colour; the anchor
+     * colour is the first non-Wild cell in the rectangle.
+     * Returns the de-duplicated union of all cells belonging to qualifying rectangles.
      */
     private fun findSolidRectangles(board: List<List<GridCell>>): Set<Cell> {
         val height = board.size
@@ -362,8 +585,8 @@ class MainViewModel @Inject constructor(
         // ── Scan all 3-wide × 2-tall rectangles ─────────────────────────
         for (y in 0..height - 2) {
             for (x in 0..width - 3) {
-                val color = board[y][x].color ?: continue
-                if (isFilledRect(board, x, y, 3, 2, color)) {
+                val anchorColor = findAnchorColor(board, x, y, 3, 2) ?: continue
+                if (isFilledRect(board, x, y, 3, 2, anchorColor)) {
                     for (dy in 0..1) {
                         for (dx in 0..2) {
                             toClear.add(Cell(x + dx, y + dy))
@@ -376,8 +599,8 @@ class MainViewModel @Inject constructor(
         // ── Scan all 2-wide × 3-tall rectangles ─────────────────────────
         for (y in 0..height - 3) {
             for (x in 0..width - 2) {
-                val color = board[y][x].color ?: continue
-                if (isFilledRect(board, x, y, 2, 3, color)) {
+                val anchorColor = findAnchorColor(board, x, y, 2, 3) ?: continue
+                if (isFilledRect(board, x, y, 2, 3, anchorColor)) {
                     for (dy in 0..2) {
                         for (dx in 0..1) {
                             toClear.add(Cell(x + dx, y + dy))
@@ -391,8 +614,29 @@ class MainViewModel @Inject constructor(
     }
 
     /**
+     * Find the first non-Wild colour in the rectangle starting at ([x],[y])
+     * with [w]idth and [h]eight.  Returns null if every cell is Wild or empty.
+     */
+    private fun findAnchorColor(
+        board: List<List<GridCell>>,
+        x: Int, y: Int,
+        w: Int, h: Int
+    ): androidx.compose.ui.graphics.Color? {
+        for (dy in 0 until h) {
+            for (dx in 0 until w) {
+                val cell = board[y + dy][x + dx]
+                if (cell.color != null && !isWild(board, y + dy, x + dx)) {
+                    return cell.color
+                }
+            }
+        }
+        return null
+    }
+
+    /**
      * Check whether every cell in the rectangle starting at ([x],[y])
      * with the given [w]idth and [h]eight is filled with [color].
+     * Wild cells are treated as matching any colour.
      */
     private fun isFilledRect(
         board: List<List<GridCell>>,
@@ -402,7 +646,10 @@ class MainViewModel @Inject constructor(
     ): Boolean {
         for (dy in 0 until h) {
             for (dx in 0 until w) {
-                if (board[y + dy][x + dx].color != color) return false
+                val cell = board[y + dy][x + dx]
+                if (cell.color == null) return false
+                if (isWild(board, y + dy, x + dx)) continue  // Wild matches any
+                if (cell.color != color) return false
             }
         }
         return true

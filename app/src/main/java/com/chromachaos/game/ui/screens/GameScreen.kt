@@ -43,6 +43,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -54,7 +56,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.chromachaos.game.R
 import com.chromachaos.game.data.model.Block
+import com.chromachaos.game.data.model.BlockColors
 import com.chromachaos.game.data.model.GridCell
+import com.chromachaos.game.data.model.SpecialBlockType
 import com.chromachaos.game.presentation.viewmodel.MainViewModel
 import com.chromachaos.game.presentation.viewmodel.MoveDirection
 import kotlinx.coroutines.delay
@@ -234,6 +238,16 @@ private fun NeonTopBar(
 private fun NeonNextBlockPreview(block: Block) {
     val shape = block.getRotatedShape()
     val color = block.color
+    val isSpecial = block.isSpecial
+    val specialType = block.specialType
+
+    // For special blocks, use a distinguishing border & background colour
+    val displayColor = when {
+        isSpecial && specialType == SpecialBlockType.WILD -> NeonRainbow1
+        isSpecial && specialType == SpecialBlockType.CROSS_CLEAR -> NeonCrossClear
+        isSpecial && specialType == SpecialBlockType.AREA_EXPLOSION -> NeonAreaExplosion
+        else -> color
+    }
 
     Column {
         shape.forEach { row ->
@@ -244,13 +258,13 @@ private fun NeonNextBlockPreview(block: Block) {
                             .size(14.dp)
                             .padding(1.dp)
                             .background(
-                                color = if (isFilled) color else Color.Transparent,
+                                color = if (isFilled) displayColor else Color.Transparent,
                                 shape = RoundedCornerShape(2.dp)
                             )
                             .then(
                                 if (isFilled) Modifier.border(
                                     width = 0.5.dp,
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = if (isSpecial) Color.White else Color.White.copy(alpha = 0.5f),
                                     shape = RoundedCornerShape(2.dp)
                                 ) else Modifier
                             )
@@ -260,6 +274,13 @@ private fun NeonNextBlockPreview(block: Block) {
         }
     }
 }
+
+// ── Special block neon colours ──────────────────────────────────────────────
+private val NeonRainbow1 = Color(0xFFFF00FF)  // magenta
+private val NeonRainbow2 = Color(0xFF00FFFF)  // cyan
+private val NeonRainbow3 = Color(0xFFFFFF00)  // yellow
+private val NeonCrossClear = Color(0xFFFFD700)  // gold
+private val NeonAreaExplosion = Color(0xFFFF4500)  // orange-red
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  Game grid — drawn on a Canvas for crisp neon lines + glow border
@@ -290,6 +311,8 @@ fun NeonGameGrid(
     }
 
     val blockColor = currentBlock?.color ?: Color.Transparent
+    val blockIsSpecial = currentBlock?.isSpecial ?: false
+    val blockSpecialType = currentBlock?.specialType
 
     Box(
         modifier = modifier
@@ -344,6 +367,18 @@ fun NeonGameGrid(
                 for (x in 0 until cols) {
                     val cell = grid[y][x]
                     val isBlock = blockCells.contains(Pair(x, y))
+
+                    // Determine the special type for rendering
+                    val cellSpecialType: SpecialBlockType? = when {
+                        isBlock -> blockSpecialType
+                        cell.isSpecial -> cell.specialType
+                        else -> null
+                    }
+                    val cellIsSpecial = when {
+                        isBlock -> blockIsSpecial
+                        else -> cell.isSpecial
+                    }
+
                     val fillColor: Color? = when {
                         isBlock -> blockColor
                         cell.color != null -> cell.color
@@ -356,31 +391,124 @@ fun NeonGameGrid(
                         val cw = cellW - 2f
                         val ch = cellH - 2f
 
-                        // Cell glow background
-                        drawRect(
-                            color = fillColor.copy(alpha = 0.25f),
-                            topLeft = Offset(left - 2f, top - 2f),
-                            size = Size(cw + 4f, ch + 4f)
-                        )
+                        if (cellIsSpecial && cellSpecialType != null) {
+                            // ── Special block rendering ─────────────────
+                            drawSpecialCell(cellSpecialType, left, top, cw, ch)
+                        } else {
+                            // ── Normal block rendering ──────────────────
+                            // Cell glow background
+                            drawRect(
+                                color = fillColor.copy(alpha = 0.25f),
+                                topLeft = Offset(left - 2f, top - 2f),
+                                size = Size(cw + 4f, ch + 4f)
+                            )
 
-                        // Solid cell
-                        drawRoundRect(
-                            color = fillColor,
-                            topLeft = Offset(left, top),
-                            size = Size(cw, ch),
-                            cornerRadius = CornerRadius(3f, 3f)
-                        )
+                            // Solid cell
+                            drawRoundRect(
+                                color = fillColor,
+                                topLeft = Offset(left, top),
+                                size = Size(cw, ch),
+                                cornerRadius = CornerRadius(3f, 3f)
+                            )
 
-                        // Highlight edge (top-left shine)
-                        drawRoundRect(
-                            color = Color.White.copy(alpha = 0.25f),
-                            topLeft = Offset(left + 1f, top + 1f),
-                            size = Size(cw - 2f, ch * 0.35f),
-                            cornerRadius = CornerRadius(3f, 3f)
-                        )
+                            // Highlight edge (top-left shine)
+                            drawRoundRect(
+                                color = Color.White.copy(alpha = 0.25f),
+                                topLeft = Offset(left + 1f, top + 1f),
+                                size = Size(cw - 2f, ch * 0.35f),
+                                cornerRadius = CornerRadius(3f, 3f)
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Draws a special-block cell with distinct visual treatment depending on type.
+ */
+private fun DrawScope.drawSpecialCell(
+    type: SpecialBlockType,
+    left: Float, top: Float,
+    cw: Float, ch: Float
+) {
+    when (type) {
+        SpecialBlockType.WILD -> {
+            // Rainbow diagonal gradient
+            drawRoundRect(
+                brush = Brush.linearGradient(
+                    colors = listOf(NeonRainbow1, NeonRainbow2, NeonRainbow3, NeonRainbow1),
+                    start = Offset(left, top),
+                    end = Offset(left + cw, top + ch)
+                ),
+                topLeft = Offset(left, top),
+                size = Size(cw, ch),
+                cornerRadius = CornerRadius(3f, 3f)
+            )
+            // White diamond icon in centre
+            val cx = left + cw / 2f
+            val cy = top + ch / 2f
+            val r = minOf(cw, ch) * 0.25f
+            val diamond = Path().apply {
+                moveTo(cx, cy - r)
+                lineTo(cx + r, cy)
+                lineTo(cx, cy + r)
+                lineTo(cx - r, cy)
+                close()
+            }
+            drawPath(diamond, Color.White.copy(alpha = 0.85f))
+        }
+
+        SpecialBlockType.CROSS_CLEAR -> {
+            // Gold cell with cross marker
+            drawRoundRect(
+                color = NeonCrossClear,
+                topLeft = Offset(left, top),
+                size = Size(cw, ch),
+                cornerRadius = CornerRadius(3f, 3f)
+            )
+            // Glow
+            drawRect(
+                color = NeonCrossClear.copy(alpha = 0.35f),
+                topLeft = Offset(left - 2f, top - 2f),
+                size = Size(cw + 4f, ch + 4f)
+            )
+            // Cross icon (+)
+            val cx = left + cw / 2f
+            val cy = top + ch / 2f
+            val arm = minOf(cw, ch) * 0.3f
+            val thick = minOf(cw, ch) * 0.12f
+            drawRect(Color.White.copy(alpha = 0.9f), Offset(cx - thick / 2, cy - arm), Size(thick, arm * 2))
+            drawRect(Color.White.copy(alpha = 0.9f), Offset(cx - arm, cy - thick / 2), Size(arm * 2, thick))
+        }
+
+        SpecialBlockType.AREA_EXPLOSION -> {
+            // Orange-red cell with starburst
+            drawRoundRect(
+                color = NeonAreaExplosion,
+                topLeft = Offset(left, top),
+                size = Size(cw, ch),
+                cornerRadius = CornerRadius(3f, 3f)
+            )
+            // Glow
+            drawRect(
+                color = NeonAreaExplosion.copy(alpha = 0.35f),
+                topLeft = Offset(left - 2f, top - 2f),
+                size = Size(cw + 4f, ch + 4f)
+            )
+            // Star burst — circle + 4 rays
+            val cx = left + cw / 2f
+            val cy = top + ch / 2f
+            val r = minOf(cw, ch) * 0.18f
+            drawCircle(Color.White.copy(alpha = 0.9f), r, Offset(cx, cy))
+            val rayLen = minOf(cw, ch) * 0.32f
+            val rayThick = minOf(cw, ch) * 0.08f
+            // Vertical ray
+            drawRect(Color.White.copy(alpha = 0.7f), Offset(cx - rayThick / 2, cy - rayLen), Size(rayThick, rayLen * 2))
+            // Horizontal ray
+            drawRect(Color.White.copy(alpha = 0.7f), Offset(cx - rayLen, cy - rayThick / 2), Size(rayLen * 2, rayThick))
         }
     }
 }

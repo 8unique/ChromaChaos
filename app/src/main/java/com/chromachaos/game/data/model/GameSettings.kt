@@ -11,5 +11,6 @@ data class GameSettings(
     val enableSpecialBlocks: Boolean = true,
     val enableSound: Boolean = true,
     val enableVibration: Boolean = true,
-    val difficulty: Difficulty = Difficulty.NORMAL
+    val difficulty: Difficulty = Difficulty.NORMAL,
+    val gameMode: GameMode = GameMode.CASUAL
 )

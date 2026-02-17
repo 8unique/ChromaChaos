@@ -4,6 +4,7 @@ import com.chromachaos.game.data.model.*
 import com.chromachaos.game.data.repository.GameRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
+import kotlin.random.Random
 
 class GameUseCase @Inject constructor(
     private val repository: GameRepository
@@ -39,6 +40,32 @@ class GameUseCase @Inject constructor(
     fun generateRandomBlock(): Block = repository.generateRandomBlock()
     
     fun generateSpecialBlock(): Block = repository.generateSpecialBlock()
+
+    /**
+     * Decides whether to spawn a special block instead of a normal one.
+     *
+     * Rules:
+     * - Special blocks must be enabled in settings.
+     * - Competitive mode NEVER gets special blocks.
+     * - Never spawn two specials in a row.
+     * - Combined chance ≈ 8 % (WILD ~4 %, CROSS_CLEAR ~2 %, AREA_EXPLOSION ~3 %).
+     *
+     * @param settings current game settings
+     * @param lastBlockWasSpecial true if the previous block was special
+     * @return a special [Block] or `null` (→ spawn normal instead).
+     */
+    fun maybeGenerateSpecialBlock(
+        settings: GameSettings,
+        lastBlockWasSpecial: Boolean
+    ): Block? {
+        if (!settings.enableSpecialBlocks) return null
+        if (settings.gameMode == GameMode.COMPETITIVE) return null
+        if (lastBlockWasSpecial) return null
+
+        // ~8 % combined chance (8 out of 100)
+        val roll = Random.nextInt(100)
+        return if (roll < 10) generateSpecialBlock() else null
+    }
 
     /**
      * Color-line scoring: 10 points per cleared block.
