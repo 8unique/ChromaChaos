@@ -7,14 +7,11 @@ import androidx.room.TypeConverters
 import android.content.Context
 import com.chromachaos.game.data.model.GameSettings
 import com.chromachaos.game.data.model.GameStats
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [GameStats::class, GameSettings::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -33,24 +30,43 @@ abstract class GameDatabase : RoomDatabase() {
                     GameDatabase::class.java,
                     "chroma_chaos_database"
                 )
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
-                            // Initialize database with default values
-                            CoroutineScope(Dispatchers.IO).launch {
-                                try {
-                                    val database = INSTANCE
-                                    database?.let { db ->
-                                        // Insert default settings
-                                        db.settingsDao().insertSettings(GameSettings())
-                                        // Insert default stats
-                                        db.gameDao().insertStats(GameStats())
-                                    }
-                                } catch (e: Exception) {
-                                    // Log error but don't crash the app
-                                    e.printStackTrace()
-                                }
-                            }
+                            // Seed default rows via raw SQL — avoids the
+                            // INSTANCE race condition (INSTANCE is still null
+                            // when onCreate fires during .build()).
+                            db.execSQL(
+                                "INSERT OR IGNORE INTO game_settings " +
+                                "(id, gridWidth, gridHeight, enableSpecialBlocks, " +
+                                "enableSound, enableVibration, difficulty, gameMode) " +
+                                "VALUES (1, 12, 20, 1, 1, 1, 'NORMAL', 'CASUAL')"
+                            )
+                            db.execSQL(
+                                "INSERT OR IGNORE INTO game_stats " +
+                                "(id, highScore, totalGamesPlayed, totalLinesCleared, " +
+                                "totalPlayTime, bestCombo) " +
+                                "VALUES (1, 0, 0, 0, 0, 0)"
+                            )
+                        }
+
+                        override fun onOpen(db: SupportSQLiteDatabase) {
+                            super.onOpen(db)
+                            // Safety-net: ensure rows exist on every open
+                            // (handles edge-cases like destructive migration).
+                            db.execSQL(
+                                "INSERT OR IGNORE INTO game_settings " +
+                                "(id, gridWidth, gridHeight, enableSpecialBlocks, " +
+                                "enableSound, enableVibration, difficulty, gameMode) " +
+                                "VALUES (1, 12, 20, 1, 1, 1, 'NORMAL', 'CASUAL')"
+                            )
+                            db.execSQL(
+                                "INSERT OR IGNORE INTO game_stats " +
+                                "(id, highScore, totalGamesPlayed, totalLinesCleared, " +
+                                "totalPlayTime, bestCombo) " +
+                                "VALUES (1, 0, 0, 0, 0, 0)"
+                            )
                         }
                     })
                     .build()

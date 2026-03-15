@@ -104,13 +104,9 @@ enum class BlockShape(val blocks: List<List<Boolean>>) {
 }
 
 enum class SpecialBlockType {
-    BOMB,
-    COLOR_CLEAR,
-    LINE_CLEAR,
-    SCORE_MULTIPLIER,
-    WILDCARD,
-    PERSISTENT,
-    SHAPE_SHIFTING
+    WILD,
+    CROSS_CLEAR,
+    AREA_EXPLOSION
 }
 
 object BlockColors {
@@ -121,6 +117,13 @@ object BlockColors {
     val PURPLE = Color(0xFF9C27B0)
     val ORANGE = Color(0xFFFF9800)
     val CYAN = Color(0xFF00BCD4)
-    
+
+    /** Sentinel colour used for Wild (rainbow) blocks on the grid. */
+    val RAINBOW = Color(0xFFFF00FF)
+    /** Sentinel colour used for Cross-Clear blocks on the grid. */
+    val CROSS_CLEAR = Color(0xFFFFD700)
+    /** Sentinel colour used for Area-Explosion blocks on the grid. */
+    val AREA_EXPLOSION = Color(0xFFFF4500)
+
     val allColors = listOf(RED, BLUE, GREEN, YELLOW, PURPLE, ORANGE, CYAN)
 } 

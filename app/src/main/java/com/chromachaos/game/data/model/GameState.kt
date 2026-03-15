@@ -29,3 +29,7 @@ data class GridCell(
 enum class Difficulty {
     EASY, NORMAL, HARD, EXPERT
 }
+
+enum class GameMode {
+    CASUAL, COMPETITIVE
+}

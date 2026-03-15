@@ -3,6 +3,7 @@ package com.chromachaos.game.data.local
 import androidx.compose.ui.graphics.Color
 import androidx.room.TypeConverter
 import com.chromachaos.game.data.model.Difficulty
+import com.chromachaos.game.data.model.GameMode
 import com.chromachaos.game.data.model.SpecialBlockType
 
 class Converters {
@@ -35,5 +36,15 @@ class Converters {
     @TypeConverter
     fun toSpecialBlockType(value: String?): SpecialBlockType? {
         return value?.let { SpecialBlockType.valueOf(it) }
+    }
+
+    @TypeConverter
+    fun fromGameMode(value: GameMode): String {
+        return value.name
+    }
+
+    @TypeConverter
+    fun toGameMode(value: String): GameMode {
+        return GameMode.valueOf(value)
     }
 }

@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.chromachaos.game.R
 import com.chromachaos.game.data.model.Difficulty
+import com.chromachaos.game.data.model.GameMode
 import com.chromachaos.game.data.model.GameSettings
 import com.chromachaos.game.presentation.viewmodel.MainViewModel
 
@@ -29,11 +30,7 @@ fun SettingsScreen(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val gameSettings by viewModel.gameSettings.collectAsState()
-    var localSettings by remember { mutableStateOf(gameSettings) }
-    
-    LaunchedEffect(gameSettings) {
-        localSettings = gameSettings
-    }
+    var localSettings by remember(gameSettings) { mutableStateOf(gameSettings) }
     
     Box(
         modifier = Modifier
@@ -218,6 +215,48 @@ fun SettingsScreen(
             }
             
             Spacer(modifier = Modifier.height(24.dp))
+
+            // Game Mode
+            SettingsSection(title = stringResource(R.string.settings_game_mode)) {
+                GameMode.values().forEach { mode ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = mode.name.replace("_", " "),
+                                color = Color.White,
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                text = if (mode == GameMode.COMPETITIVE)
+                                    stringResource(R.string.settings_game_mode_competitive_desc)
+                                else
+                                    stringResource(R.string.settings_game_mode_casual_desc),
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        RadioButton(
+                            selected = localSettings.gameMode == mode,
+                            onClick = {
+                                localSettings = localSettings.copy(gameMode = mode)
+                            },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = Color(0xFFFFD700),
+                                unselectedColor = Color.White
+                            )
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
             
             // Game Features
             SettingsSection(title = stringResource(R.string.settings_game_features)) {
@@ -233,19 +272,29 @@ fun SettingsScreen(
                         color = Color.White,
                         fontSize = 16.sp
                     )
-                    
+
+                    val isCompetitive = localSettings.gameMode == GameMode.COMPETITIVE
+
                     Switch(
                         checked = localSettings.enableSpecialBlocks,
                         onCheckedChange = {
-                            localSettings = localSettings.copy(enableSpecialBlocks = it)
+                            if (!isCompetitive) {
+                                localSettings = localSettings.copy(enableSpecialBlocks = it)
+                            }
                         },
+                        enabled = !isCompetitive,
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color(0xFFFFD700),
                             checkedTrackColor = Color(0xFFFFD700).copy(alpha = 0.5f),
                             uncheckedThumbColor = Color.White,
-                            uncheckedTrackColor = Color.White.copy(alpha = 0.5f)
+                            uncheckedTrackColor = Color.White.copy(alpha = 0.5f),
+                            disabledCheckedThumbColor = Color.Gray,
+                            disabledUncheckedThumbColor = Color.Gray,
+                            disabledCheckedTrackColor = Color.Gray.copy(alpha = 0.4f),
+                            disabledUncheckedTrackColor = Color.Gray.copy(alpha = 0.4f)
                         )
                     )
+
                 }
                 
                 Row(

@@ -12,6 +12,10 @@ interface GameDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStats(stats: GameStats)
 
+    /** Insert default row only if none exists (IGNORE = no-op on conflict). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun ensureStatsExist(stats: GameStats)
+
     @Update
     suspend fun updateStats(stats: GameStats)
 

@@ -12,6 +12,7 @@ interface GameSettingsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSettings(settings: GameSettings)
 
-    @Update
+    /** Upsert — inserts if row is missing, replaces if it exists. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun updateSettings(settings: GameSettings)
 } 

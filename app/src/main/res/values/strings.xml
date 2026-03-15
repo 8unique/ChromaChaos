@@ -70,7 +70,10 @@
     <string name="settings_height">Height</string>
     <string name="settings_difficulty">Difficulty</string>
     <string name="settings_game_features">Game Features</string>
-    <string name="settings_special_blocks">Special Blocks</string>
+    <string name="settings_special_blocks">Special Blocks (Available in Casual mode only)</string>
+    <string name="settings_game_mode">Game Mode</string>
+    <string name="settings_game_mode_casual_desc">All features enabled</string>
+    <string name="settings_game_mode_competitive_desc">Leaderboard-safe, no specials</string>
     <string name="settings_sound_effects">Sound Effects</string>
     <string name="settings_vibration">Vibration</string>
     <string name="settings_save">Save Settings</string>
