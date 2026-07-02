@@ -218,4 +218,4 @@ See the  [LICENSE](LICENSE)  file for details.
 ## Contact
 
 Developer: 8unique\
-Email: game.Chroma Chaos@gmail.com
+Email: game.ChromaChaos@gmail.com
